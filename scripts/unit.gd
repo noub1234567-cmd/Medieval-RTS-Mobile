@@ -27,6 +27,7 @@ var carried_amount:=0
 var carried_type:String=""
 var cargo_capacity:=100
 var storage_target:Node2D=null
+var storage_recheck_timer:=0.0
 var build_target_site:Node2D=null
 var target:Node2D=null
 var body:Polygon2D
@@ -137,12 +138,12 @@ func return_to_storage()->void:
 	if parent==null:return
 	storage_target=parent.get_nearest_storage(position)
 	harvest_target_node=null
+	storage_recheck_timer=0.0
 	moving=storage_target!=null
 	path_pending=false
 	route=PackedVector2Array()
 	route_index=0
 	if storage_target!=null:
-		# Route directly to the storage center; movement collision exempts this target.
 		destination=storage_target.position
 		set_route(destination)
 	else:
@@ -200,9 +201,24 @@ func _process(delta:float)->void:
 	# Workers carry full loads to storage and automatically resume the same deposit,
 	# or select the nearest remaining deposit of that resource if it was exhausted.
 	if storage_target!=null:
+		# Periodically reassess storage options while travelling; switch immediately
+		# if another live storage has become the closest to the worker's current position.
+		storage_recheck_timer-=delta
+		if storage_recheck_timer<=0.0:
+			storage_recheck_timer=0.6
+			var parent_for_storage=get_parent()
+			if parent_for_storage!=null and parent_for_storage.has_method("get_nearest_storage"):
+				var closest_storage=parent_for_storage.get_nearest_storage(position)
+				if closest_storage!=storage_target:
+					storage_target=closest_storage
+					path_pending=false
+					route=PackedVector2Array()
+					route_index=0
+					if storage_target!=null:
+						destination=storage_target.position
+						set_route(destination)
 		if not is_instance_valid(storage_target) or storage_target.health<=0:
-			storage_target=null
-			moving=false
+			return_to_storage()
 		elif position.distance_to(storage_target.position)<=76.0:
 			moving=false
 			var parent=get_parent()
