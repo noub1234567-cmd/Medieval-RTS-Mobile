@@ -130,6 +130,15 @@ func get_nearest_storage(pos:Vector2)->Node2D:
 				nearest=depot
 	return nearest
 
+func get_nearest_resource_node(pos:Vector2,resource_type:String)->Node2D:
+	var nearest:Node2D=null
+	var best=INF
+	for node in resource_nodes:
+		if is_instance_valid(node) and node.amount>0 and node.resource_type==resource_type:
+			var d=pos.distance_to(node.position)
+			if d<best:best=d;nearest=node
+	return nearest
+
 func deliver_resource(resource_type:String, quantity:int)->int:
 	var room=max(0,storage_capacity-resources.get(resource_type,0))
 	var delivered=min(room,quantity)
@@ -486,9 +495,19 @@ func place_building(pos:Vector2) -> void:
 	add_child(structure)
 	buildings.append(structure)
 	construction_sites.append(structure)
+	assign_builder_to_site(structure)
 	placing_building=false
 	help_label.text="Tap units then tap destination. Drag to pan."
 	update_status()
+
+func assign_builder_to_site(site:Node2D)->void:
+	var builder:Node2D=null
+	var nearest=INF
+	for unit in units:
+		if is_instance_valid(unit) and unit.team==0 and unit.health>0 and unit.build_target_site==null and unit.harvest_target_node==null and unit.storage_target==null:
+			var d=unit.position.distance_to(site.position)
+			if d<nearest:nearest=d;builder=unit
+	if builder!=null:builder.build_target(site)
 
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
