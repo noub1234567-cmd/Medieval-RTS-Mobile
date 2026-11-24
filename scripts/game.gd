@@ -11,10 +11,14 @@ var drag_start := Vector2.ZERO
 var dragging := false
 var camera_offset := Vector2.ZERO
 var zoom_level := 1.0
+const OverlayScene = preload("res://scenes/selection_overlay.tscn")
 
 @onready var overlay = $SelectionOverlay
 
 func _ready():
+	overlay = OverlayScene.instantiate()
+	overlay.name = "SelectionOverlay"
+	add_child(overlay)
 	for y in range(GRID.y):
 		for x in range(GRID.x):
 			var tile = Polygon2D.new()
