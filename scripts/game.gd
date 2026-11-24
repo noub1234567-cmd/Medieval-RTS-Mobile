@@ -496,6 +496,8 @@ func place_building(pos:Vector2) -> void:
 	structure.add_child(label)
 	add_child(structure)
 	buildings.append(structure)
+	if structure.team==0 and structure.name=="House":
+		population_cap+=5
 	construction_sites.append(structure)
 	assign_builder_to_site(structure)
 	placing_building=false
@@ -518,7 +520,7 @@ func player_unit_died(unit:Node2D)->void:
 
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
-	if b.team==0 and b.name=="House":population_cap+=5
+
 	if b.name=="Warehouse":
 		storage_capacity+=1500
 		storage_points.append(b)
