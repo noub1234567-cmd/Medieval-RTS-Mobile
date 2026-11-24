@@ -23,7 +23,6 @@ var carried_amount:=0
 var carried_type:String=""
 var cargo_capacity:=100
 var storage_target:Node2D=null
-var resume_harvest_node:Node2D=null
 var build_target_site:Node2D=null
 var target:Node2D=null
 var body:Polygon2D
@@ -54,11 +53,18 @@ func team_color()->Color:
 
 func set_team(t:int)->void:
 	team=t
-	if is_instance_valid(body): body.color=team_color()
+	if is_instance_valid(body):body.color=team_color()
 
 func set_selected(v:bool)->void:
 	selected=v
-	if is_instance_valid(ring): ring.visible=v
+	if is_instance_valid(ring):ring.visible=v
+
+func set_route(to_pos:Vector2)->void:
+	var parent=get_parent()
+	if parent!=null and parent.has_method("find_path"):
+		route=parent.find_path(position,to_pos,self)
+	else:route=PackedVector2Array([to_pos])
+	route_index=0
 
 func move_to(p:Vector2)->void:
 	target=null
@@ -70,27 +76,15 @@ func move_to(p:Vector2)->void:
 	destination=p
 	moving=true
 	set_route(p)
-	set_route(p)
-
-func set_route(to_pos:Vector2)->void:
-	var parent=get_parent()
-	if parent!=null and parent.has_method("find_path"):
-		route=parent.find_path(position,to_pos,self)
-		route_index=0
-	else:
-		route=PackedVector2Array([to_pos])
-		route_index=0
 
 func harvest_target(node:Node2D)->void:
 	if node==null or not is_instance_valid(node) or team!=0:return
 	target=null
 	storage_target=null
+	build_target_site=null
 	harvest_target_node=node
-	if carried_amount>=cargo_capacity:
-		return_to_storage()
-	else:
-		moving=true
-		destination=node.position
+	moving=true
+	destination=node.position
 	set_route(destination)
 
 func return_to_storage()->void:
@@ -99,8 +93,9 @@ func return_to_storage()->void:
 	storage_target=parent.get_nearest_storage(position)
 	harvest_target_node=null
 	moving=storage_target!=null
-	if storage_target!=null:destination=storage_target.position
-	set_route(destination)
+	if storage_target!=null:
+		destination=storage_target.position
+		set_route(destination)
 
 func build_target(site:Node2D)->void:
 	if team!=0 or site==null or not is_instance_valid(site) or site.is_complete:return
@@ -115,6 +110,7 @@ func build_target(site:Node2D)->void:
 func attack_target(enemy:Node2D)->void:
 	harvest_target_node=null
 	storage_target=null
+	build_target_site=null
 	if enemy==null or not is_instance_valid(enemy):return
 	target=enemy
 	moving=false
@@ -126,10 +122,8 @@ func acquire_player_target()->void:
 	var nearest=detection_range
 	for candidate in parent.units:
 		if is_instance_valid(candidate) and candidate.team==0 and candidate.health>0:
-			var distance=position.distance_to(candidate.position)
-			if distance<nearest:
-				nearest=distance
-				closest=candidate
+			var d=position.distance_to(candidate.position)
+			if d<nearest:nearest=d;closest=candidate
 	if closest!=null:attack_target(closest)
 
 func take_damage(amount:int)->void:
@@ -144,6 +138,8 @@ func update_health_bar()->void:
 	health_bar.color=Color(0.2,0.9,0.25) if ratio>0.5 else Color(1,0.65,0.1) if ratio>0.25 else Color(0.95,0.2,0.15)
 
 func _process(delta:float)->void:
+	# Workers carry full loads to storage and automatically resume the same deposit,
+	# or select the nearest remaining deposit of that resource if it was exhausted.
 	if storage_target!=null:
 		if not is_instance_valid(storage_target) or storage_target.health<=0:
 			storage_target=null
@@ -152,45 +148,49 @@ func _process(delta:float)->void:
 			moving=false
 			var parent=get_parent()
 			if parent!=null and carried_amount>0:
-				var delivered:int=parent.deliver_resource(carried_type,carried_amount)
+				var delivered=parent.deliver_resource(carried_type,carried_amount)
 				carried_amount-=delivered
 				if carried_amount<=0:
+					var old_type=carried_type
 					carried_type=""
 					storage_target=null
-					if is_instance_valid(harvest_target_node):
+					if is_instance_valid(harvest_target_node) and harvest_target_node.amount>0:
 						harvest_target(harvest_target_node)
+					else:
+						harvest_target_node=null
+						var next_node=parent.get_nearest_resource_node(position,old_type)
+						if next_node!=null:harvest_target(next_node)
 				else:
-						moving=false
-			else:
-				moving=true
-				destination=storage_target.position
+						moving=true
+					if storage_target!=null:destination=storage_target.position
 		else:
 			moving=true
 			destination=storage_target.position
-	if harvest_target_node!=null:
+	if harvest_target_node!=null and storage_target==null:
 		if not is_instance_valid(harvest_target_node) or harvest_target_node.amount<=0:
+			var exhausted_type=carried_type if carried_type!="" else harvest_target_node.resource_type if is_instance_valid(harvest_target_node) else ""
 			harvest_target_node=null
-			if carried_amount>0:
-				return_to_storage()
-			else:
-				moving=false
+			if carried_amount>0:return_to_storage()
+			elif exhausted_type!="":
+				var next=get_parent().get_nearest_resource_node(position,exhausted_type)
+				if next!=null:harvest_target(next)
+			else:moving=false
 		else:
-			var hd:Vector2=harvest_target_node.position-position
-			if hd.length()>30.0:
+			var d_h=position.distance_to(harvest_target_node.position)
+			if d_h>30.0:
 				moving=true
 				destination=harvest_target_node.position
+				if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 			else:
 				moving=false
 				harvest_timer+=delta
-				if carried_amount>=cargo_capacity:
-					return_to_storage()
+				if carried_amount>=cargo_capacity:return_to_storage()
 				elif harvest_timer>=1.5:
 					harvest_timer=0.0
-					var gathered:int=harvest_target_node.harvest(min(10,cargo_capacity-carried_amount))
-					carried_amount+=gathered
+					var amount=harvest_target_node.harvest(min(10,cargo_capacity-carried_amount))
+					carried_amount+=amount
 					carried_type=harvest_target_node.resource_type
-					if carried_amount>=cargo_capacity or harvest_target_node.amount<=0:
-						return_to_storage()
+					if carried_amount>=cargo_capacity or harvest_target_node.amount<=0:return_to_storage()
 	if build_target_site!=null:
 		if not is_instance_valid(build_target_site) or build_target_site.is_complete:
 			build_target_site=null
@@ -201,46 +201,50 @@ func _process(delta:float)->void:
 		else:
 			moving=true
 			destination=build_target_site.position
+			if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 	attack_timer=max(0.0,attack_timer-delta)
 	acquire_timer-=delta
 	if team==1 and target==null and acquire_timer<=0.0:
 		acquire_timer=1.5
 		acquire_player_target()
 	if target!=null:
-		if not is_instance_valid(target) or target.health<=0:
-			target=null
+		if not is_instance_valid(target) or target.health<=0:target=null
 		else:
-			var d:Vector2=target.position-position
+			var d=target.position-position
 			if d.length()>attack_range:
-				var step:Vector2=d.normalized()*min(speed*delta,d.length()-attack_range+2.0)
 				var parent=get_parent()
-				var candidate=position+step
-				if not parent.has_method("is_unit_position_blocked") or not parent.is_unit_position_blocked(candidate,self,target):
-					position=candidate
-				else:
-					var slide_x=position+Vector2(step.x,0)
-					var slide_y=position+Vector2(0,step.y)
-					if not parent.is_unit_position_blocked(slide_x,self,target):position=slide_x
-					elif not parent.is_unit_position_blocked(slide_y,self,target):position=slide_y
+				if route.is_empty() or route[route.size()-1].distance_to(target.position)>8.0:set_route(target.position)
+				move_along_route(delta,parent,target)
 			elif attack_timer<=0.0:
 				target.take_damage(attack_damage)
 				attack_timer=attack_cooldown
-				if is_instance_valid(target) and target.health>0 and target.has_method("attack_target") and target.team!=team:
-					target.attack_target(self)
+				if is_instance_valid(target) and target.health>0 and target.has_method("attack_target") and target.team!=team:target.attack_target(self)
 	if moving and target==null:
-		var d2:Vector2=destination-position
-		if d2.length()<3.0 and harvest_target_node==null and storage_target==null and build_target_site==null:
-			position=destination
+		var parent=get_parent()
+		if parent!=null:move_along_route(delta,parent)
+
+func move_along_route(delta:float,parent:Node,target_override:Node=null)->void:
+	if route.is_empty():set_route(destination)
+	if route.is_empty():return
+	if route_index>=route.size():route_index=route.size()-1
+	var waypoint=route[route_index]
+	if position.distance_to(waypoint)<14.0 and route_index<route.size()-1:
+		route_index+=1
+		waypoint=route[route_index]
+	var direction=waypoint-position
+	if direction.length()<3.0:
+		if route_index>=route.size()-1:
 			moving=false
-		else:
-			var step2:Vector2=d2.normalized()*min(speed*delta,d2.length())
-			var candidate2=position+step2
-			var parent2=get_parent()
-			if not parent2.has_method("is_unit_position_blocked") or not parent2.is_unit_position_blocked(candidate2,self):
-				position=candidate2
-			else:
-				var slide_x2=position+Vector2(step2.x,0)
-				var slide_y2=position+Vector2(0,step2.y)
-				if not parent2.is_unit_position_blocked(slide_x2,self):position=slide_x2
-				elif not parent2.is_unit_position_blocked(slide_y2,self):position=slide_y2
-\t\t\t\telse:\n\t\t\t\t\tstuck_timer+=delta\n\t\t\t\t\tif stuck_timer>0.45:\n\t\t\t\t\t\tset_route(destination)\n\t\t\t\t\t\tstuck_timer=0.0
+			return
+		route_index+=1
+		return
+	var step=direction.normalized()*min(speed*delta,direction.length())
+	var candidate=position+step
+	if not parent.has_method("is_unit_position_blocked") or not parent.is_unit_position_blocked(candidate,self,target_override):
+		position=candidate
+		stuck_timer=0.0
+	else:
+		stuck_timer+=delta
+		if stuck_timer>=0.35:
+			set_route(destination)
+			stuck_timer=0.0
