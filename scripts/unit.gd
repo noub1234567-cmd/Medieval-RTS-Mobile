@@ -89,6 +89,7 @@ func move_to(p:Vector2)->void:
 	build_target_site=null
 	carried_amount=0
 	carried_type=""
+	resume_harvest_node=null
 	destination=p
 	moving=true
 	set_route(p)
@@ -103,6 +104,21 @@ func harvest_target(node:Node2D)->void:
 	moving=true
 	destination=node.position
 	set_route(destination)
+
+func resume_after_delivery(resource_type:String,parent:Node)->void:
+	harvest_timer=0.0
+	harvest_target_node=null
+	if is_instance_valid(resume_harvest_node) and resume_harvest_node.amount>0:
+		harvest_target(resume_harvest_node)
+		return
+	resume_harvest_node=null
+	if parent!=null and resource_type!="":
+		var next_node=parent.get_nearest_resource_node(position,resource_type)
+		if next_node!=null:
+			harvest_target(next_node)
+			return
+	moving=false
+	destination=position
 
 func return_to_storage()->void:
 	var parent=get_parent()
@@ -120,6 +136,7 @@ func build_target(site:Node2D)->void:
 	harvest_target_node=null
 	storage_target=null
 	build_target_site=site
+	resume_harvest_node=null
 	moving=true
 	destination=site.position
 	set_route(destination)
@@ -172,16 +189,11 @@ func _process(delta:float)->void:
 					var old_type=carried_type
 					carried_type=""
 					storage_target=null
-					if is_instance_valid(resume_harvest_node) and resume_harvest_node.amount>0:
-						harvest_target(resume_harvest_node)
-					else:
-						harvest_target_node=null
-						resume_harvest_node=null
-						var next_node=parent.get_nearest_resource_node(position,old_type)
-						if next_node!=null:harvest_target(next_node)
+					resume_after_delivery(old_type,parent)
 				else:
-					moving=true
-					if storage_target!=null:destination=storage_target.position
+					# Storage is full: stop here instead of repeatedly attempting an impossible deposit.
+					storage_target=null
+					moving=false
 		else:
 			moving=true
 			destination=storage_target.position
