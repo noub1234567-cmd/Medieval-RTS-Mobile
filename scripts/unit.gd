@@ -19,6 +19,7 @@ var carried_amount:=0
 var carried_type:String=""
 var cargo_capacity:=100
 var storage_target:Node2D=null
+var resume_harvest_node:Node2D=null
 var target:Node2D=null
 var body:Polygon2D
 var ring:Line2D
