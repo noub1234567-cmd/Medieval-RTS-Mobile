@@ -496,7 +496,7 @@ func place_building(pos:Vector2) -> void:
 	structure.add_child(label)
 	add_child(structure)
 	buildings.append(structure)
-	if structure.team==0 and structure.name=="House":
+	if structure.team==0 and structure.building_type=="House":
 		population_cap+=5
 	construction_sites.append(structure)
 	assign_builder_to_site(structure)
