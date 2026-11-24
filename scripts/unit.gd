@@ -3,6 +3,10 @@ extends Node2D
 var team:int=0
 var selected:bool=false
 var destination:=Vector2.ZERO
+var route:PackedVector2Array=PackedVector2Array()
+var route_index:=0
+var stuck_timer:=0.0
+var last_position:=Vector2.ZERO
 var moving:=false
 var speed:=120.0
 var max_health:=100
@@ -65,6 +69,17 @@ func move_to(p:Vector2)->void:
 	carried_type=""
 	destination=p
 	moving=true
+	set_route(p)
+	set_route(p)
+
+func set_route(to_pos:Vector2)->void:
+	var parent=get_parent()
+	if parent!=null and parent.has_method("find_path"):
+		route=parent.find_path(position,to_pos,self)
+		route_index=0
+	else:
+		route=PackedVector2Array([to_pos])
+		route_index=0
 
 func harvest_target(node:Node2D)->void:
 	if node==null or not is_instance_valid(node) or team!=0:return
@@ -76,6 +91,7 @@ func harvest_target(node:Node2D)->void:
 	else:
 		moving=true
 		destination=node.position
+	set_route(destination)
 
 func return_to_storage()->void:
 	var parent=get_parent()
@@ -84,6 +100,7 @@ func return_to_storage()->void:
 	harvest_target_node=null
 	moving=storage_target!=null
 	if storage_target!=null:destination=storage_target.position
+	set_route(destination)
 
 func build_target(site:Node2D)->void:
 	if team!=0 or site==null or not is_instance_valid(site) or site.is_complete:return
@@ -93,6 +110,7 @@ func build_target(site:Node2D)->void:
 	build_target_site=site
 	moving=true
 	destination=site.position
+	set_route(destination)
 
 func attack_target(enemy:Node2D)->void:
 	harvest_target_node=null
@@ -225,3 +243,4 @@ func _process(delta:float)->void:
 				var slide_y2=position+Vector2(0,step2.y)
 				if not parent2.is_unit_position_blocked(slide_x2,self):position=slide_x2
 				elif not parent2.is_unit_position_blocked(slide_y2,self):position=slide_y2
+\t\t\t\telse:\n\t\t\t\t\tstuck_timer+=delta\n\t\t\t\t\tif stuck_timer>0.45:\n\t\t\t\t\t\tset_route(destination)\n\t\t\t\t\t\tstuck_timer=0.0
