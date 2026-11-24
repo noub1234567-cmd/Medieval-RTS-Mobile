@@ -20,6 +20,7 @@ var carried_type:String=""
 var cargo_capacity:=100
 var storage_target:Node2D=null
 var resume_harvest_node:Node2D=null
+var build_target_site:Node2D=null
 var target:Node2D=null
 var body:Polygon2D
 var ring:Line2D
@@ -59,6 +60,7 @@ func move_to(p:Vector2)->void:
 	target=null
 	harvest_target_node=null
 	storage_target=null
+	build_target_site=null
 	carried_amount=0
 	carried_type=""
 	destination=p
@@ -82,6 +84,15 @@ func return_to_storage()->void:
 	harvest_target_node=null
 	moving=storage_target!=null
 	if storage_target!=null:destination=storage_target.position
+
+func build_target(site:Node2D)->void:
+	if team!=0 or site==null or not is_instance_valid(site) or site.is_complete:return
+	target=null
+	harvest_target_node=null
+	storage_target=null
+	build_target_site=site
+	moving=true
+	destination=site.position
 
 func attack_target(enemy:Node2D)->void:
 	harvest_target_node=null
@@ -160,6 +171,16 @@ func _process(delta:float)->void:
 					carried_type=harvest_target_node.resource_type
 					if carried_amount>=cargo_capacity:return_to_storage()
 					elif harvest_target_node.amount<=0:return_to_storage()
+	if build_target_site!=null:
+		if not is_instance_valid(build_target_site) or build_target_site.is_complete:
+			build_target_site=null
+			moving=false
+		elif position.distance_to(build_target_site.position)<=42.0:
+			moving=false
+			build_target_site.add_build_work(delta*12.0)
+		else:
+			moving=true
+			destination=build_target_site.position
 	attack_timer=max(0.0,attack_timer-delta)
 	acquire_timer-=delta
 	if team==1 and target==null and acquire_timer<=0.0:
@@ -188,7 +209,7 @@ func _process(delta:float)->void:
 					target.attack_target(self)
 	if moving and target==null:
 		var d=destination-position
-		if d.length()<3.0 and harvest_target_node==null and storage_target==null:
+		if d.length()<3.0 and harvest_target_node==null and storage_target==null and build_target_site==null:
 			position=destination
 			moving=false
 		else:
