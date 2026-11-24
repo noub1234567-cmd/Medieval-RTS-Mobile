@@ -3,7 +3,7 @@ extends Node2D
 var team:int=0
 var max_health:int=300
 var health:int=300
-var health_bar:Polygon2D
+var building_type:String=""\nvar attack_range:float=230.0\nvar attack_damage:int=20\nvar attack_timer:float=0.0\nvar attack_cooldown:float=1.5\nvar health_bar:Polygon2D
 
 func _ready()->void:
 	health_bar=Polygon2D.new()
@@ -17,7 +17,7 @@ func update_health_bar()->void:
 	health_bar.polygon=PackedVector2Array([Vector2(-18,-2),Vector2(-18+36*ratio,-2),Vector2(-18+36*ratio,2),Vector2(-18,2)])
 	health_bar.color=Color(0.2,0.9,0.25) if ratio>0.5 else Color(1,0.65,0.1) if ratio>0.25 else Color(0.95,0.2,0.15)
 
-func take_damage(amount:int)->void:
+func _process(delta:float)->void:\n\tif building_type!="Guard Tower" or team!=0: return\n\tattack_timer=max(0.0,attack_timer-delta)\n\tif attack_timer>0.0: return\n\tvar parent=get_parent()\n\tif not parent.has_method("enemy_count"): return\n\tvar target:Node2D=null\n\tvar nearest=attack_range\n\tfor u in parent.units:\n\t\tif is_instance_valid(u) and u.team==1 and u.health>0:\n\t\t\tvar d=position.distance_to(u.position)\n\t\t\tif d<nearest:\n\t\t\t\tnearest=d\n\t\t\t\ttarget=u\n\tif target!=null:\n\t\ttarget.take_damage(attack_damage)\n\t\tattack_timer=attack_cooldown\n\nfunc take_damage(amount:int)->void:
 	health=max(0,health-amount)
 	update_health_bar()
 	if health<=0: queue_free()
