@@ -40,7 +40,7 @@ jobs:
             mv Godot_v4.3-stable_linux.x86_64 ~/godot-cache/godot
             chmod +x ~/godot-cache/godot
           fi
-          if [ ! -f ~/.local/share/godot/export_templates/4.3.stable/web_release.zip ]; then
+          if [ ! -f ~/.local/share/godot/export_templates/4.3.stable/web_release.64 ]; then
             wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz -O templates.tpz
             mkdir -p templates
             unzip -q templates.tpz -d templates
