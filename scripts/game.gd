@@ -231,6 +231,7 @@ func place_building(pos:Vector2) -> void:
 			return
 	for key in cost: resources[key]-=cost[key]
 	var structure:=Node2D.new()
+	structure.name=pending_building
 	structure.position=pos
 	var shape:=Polygon2D.new()
 	shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
