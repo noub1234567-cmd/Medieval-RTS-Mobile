@@ -681,20 +681,24 @@ func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Arr
 	var start=world_to_grid(start_pos)
 	var finish=world_to_grid(end_pos)
 	if start==finish:return PackedVector2Array([end_pos])
+	# Keep the search local to a small rectangle around the order.
+	var margin=8
+	var min_x=max(0,min(start.x,finish.x)-margin)
+	var max_x=min(GRID.x-1,max(start.x,finish.x)+margin)
+	var min_y=max(0,min(start.y,finish.y)-margin)
+	var max_y=min(GRID.y-1,max(start.y,finish.y)+margin)
 	var open:Array[Vector2i]=[start]
 	var came_from:Dictionary={}
 	var costs:Dictionary={start:0.0}
 	var scores:Dictionary={start:float(start.distance_to(finish))}
 	var visited=0
-	while not open.is_empty() and visited<1600:
+	while not open.is_empty() and visited<350:
 		visited+=1
-		var current=open[0]
-		for cell in open:
-			if scores.get(cell,INF)<scores.get(current,INF):current=cell
+		var current=open.pop_back()
 		if current==finish:break
-		open.erase(current)
 		for delta in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1),Vector2i(1,1),Vector2i(1,-1),Vector2i(-1,1),Vector2i(-1,-1)]:
 			var next=current+delta
+			if next.x<min_x or next.x>max_x or next.y<min_y or next.y>max_y:continue
 			if next!=finish and is_cell_blocked(next,mover):continue
 			var step=1.0 if abs(delta.x)+abs(delta.y)==1 else 1.4
 			var new_cost=costs[current]+step
@@ -702,7 +706,9 @@ func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Arr
 				came_from[next]=current
 				costs[next]=new_cost
 				scores[next]=new_cost+float(next.distance_to(finish))
-				if not open.has(next):open.append(next)
+				if not open.has(next):
+					open.append(next)
+					open.sort_custom(func(a,b):return scores.get(a,INF)>scores.get(b,INF))
 	if not came_from.has(finish):return PackedVector2Array([end_pos])
 	var cells:Array[Vector2i]=[]
 	var cell=finish
@@ -712,7 +718,7 @@ func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Arr
 		cell=came_from[cell]
 	var points:=PackedVector2Array()
 	for i in range(cells.size()):
-		if i==cells.size()-1 or i%2==0:points.append(grid_to_screen(cells[i]))
+		if i==cells.size()-1 or i%3==0:points.append(grid_to_screen(cells[i]))
 	points.append(end_pos)
 	return points
 
