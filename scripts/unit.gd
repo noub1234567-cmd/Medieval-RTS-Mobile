@@ -13,6 +13,8 @@ var detection_range:=220.0
 var attack_cooldown:=1.0
 var attack_timer:=0.0
 var acquire_timer:=0.0
+var harvest_target_node:Node2D=null
+var harvest_timer:=0.0
 var target:Node2D=null
 var body:Polygon2D
 var ring:Line2D
@@ -50,10 +52,19 @@ func set_selected(v:bool)->void:
 
 func move_to(p:Vector2)->void:
 	target=null
+	harvest_target_node=null
 	destination=p
 	moving=true
 
+func harvest_target(node:Node2D)->void:
+	if node==null or not is_instance_valid(node):return
+	target=null
+	harvest_target_node=node
+	moving=true
+	destination=node.position
+
 func attack_target(enemy:Node2D)->void:
+	harvest_target_node=null
 	if enemy==null or not is_instance_valid(enemy): return
 	target=enemy
 	moving=false
@@ -84,6 +95,25 @@ func update_health_bar()->void:
 	health_bar.color=Color(0.2,0.9,0.25) if ratio>0.5 else Color(1,0.65,0.1) if ratio>0.25 else Color(0.95,0.2,0.15)
 
 func _process(delta:float)->void:
+	if harvest_target_node!=null:
+		if not is_instance_valid(harvest_target_node) or harvest_target_node.amount<=0:
+			harvest_target_node=null
+			moving=false
+		else:
+			var hd=harvest_target_node.position-position
+			if hd.length()>30.0:
+				moving=true
+				destination=harvest_target_node.position
+			else:
+				moving=false
+				harvest_timer+=delta
+				if harvest_timer>=1.5:
+					harvest_timer=0.0
+					var gathered=harvest_target_node.harvest(10)
+					var parent=get_parent()
+					if parent!=null and parent.has_method("update_status"):
+						parent.resources[harvest_target_node.resource_type]+=gathered
+						parent.update_status()
 	attack_timer=max(0.0,attack_timer-delta)
 	acquire_timer-=delta
 	if team==1 and target==null and acquire_timer<=0.0:
