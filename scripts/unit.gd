@@ -24,7 +24,7 @@ var body:Polygon2D
 var ring:Line2D
 var health_bar:Polygon2D
 
-func _ready() -> void:
+func _ready()->void:
 	destination=position
 	body=Polygon2D.new()
 	body.polygon=PackedVector2Array([Vector2(0,-14),Vector2(9,-4),Vector2(7,8),Vector2(0,13),Vector2(-7,8),Vector2(-9,-4)])
@@ -57,52 +57,92 @@ func set_selected(v:bool)->void:
 func move_to(p:Vector2)->void:
 	target=null
 	harvest_target_node=null
+	storage_target=null
+	carried_amount=0
+	carried_type=""
 	destination=p
 	moving=true
 
 func harvest_target(node:Node2D)->void:
-	if node==null or not is_instance_valid(node):return
+	if node==null or not is_instance_valid(node) or team!=0:return
 	target=null
+	storage_target=null
 	harvest_target_node=node
-	moving=true
-	destination=node.position
+	if carried_amount>=cargo_capacity:
+		return_to_storage()
+	else:
+		moving=true
+		destination=node.position
+
+func return_to_storage()->void:
+	var parent=get_parent()
+	if parent==null:return
+	storage_target=parent.get_nearest_storage(position)
+	harvest_target_node=null
+	moving=storage_target!=null
+	if storage_target!=null:destination=storage_target.position
 
 func attack_target(enemy:Node2D)->void:
 	harvest_target_node=null
-	if enemy==null or not is_instance_valid(enemy): return
+	storage_target=null
+	if enemy==null or not is_instance_valid(enemy):return
 	target=enemy
 	moving=false
 
 func acquire_player_target()->void:
 	var parent=get_parent()
-	if not parent.has_method("enemy_count"): return
+	if not parent.has_method("enemy_count"):return
 	var closest:Node2D=null
 	var nearest=detection_range
 	for candidate in parent.units:
-	\tif is_instance_valid(candidate) and candidate.team==0 and candidate.health>0:
-	\t\tvar distance=position.distance_to(candidate.position)
-	\t\tif distance<nearest:
-	\t\t\tnearest=distance
-	\t\t\tclosest=candidate
-	if closest!=null: attack_target(closest)
+		if is_instance_valid(candidate) and candidate.team==0 and candidate.health>0:
+			var distance=position.distance_to(candidate.position)
+			if distance<nearest:
+				nearest=distance
+				closest=candidate
+	if closest!=null:attack_target(closest)
 
 func take_damage(amount:int)->void:
 	health=max(0,health-amount)
 	update_health_bar()
-	if health<=0:
-		queue_free()
+	if health<=0:queue_free()
 
 func update_health_bar()->void:
-	if not is_instance_valid(health_bar): return
+	if not is_instance_valid(health_bar):return
 	var ratio=float(health)/float(max_health)
 	health_bar.polygon=PackedVector2Array([Vector2(-12,-2),Vector2(-12+24*ratio,-2),Vector2(-12+24*ratio,2),Vector2(-12,2)])
 	health_bar.color=Color(0.2,0.9,0.25) if ratio>0.5 else Color(1,0.65,0.1) if ratio>0.25 else Color(0.95,0.2,0.15)
 
 func _process(delta:float)->void:
+	if storage_target!=null:
+		if not is_instance_valid(storage_target) or storage_target.health<=0:
+			storage_target=null
+			moving=false
+		else:
+			if position.distance_to(storage_target.position)<=38.0:
+				moving=false
+				var parent=get_parent()
+				if parent!=null and carried_amount>0:
+					var delivered=parent.deliver_resource(carried_type,carried_amount)
+					carried_amount-=delivered
+					if carried_amount<=0:
+						carried_type=""
+						storage_target=null
+						if harvest_target_node!=null and is_instance_valid(harvest_target_node):
+							harvest_target(harvest_target_node)
+					else:
+							storage_target=null
+					else:
+						moving=true
+						destination=storage_target.position
+			else:
+				moving=true
+				destination=storage_target.position
 	if harvest_target_node!=null:
 		if not is_instance_valid(harvest_target_node) or harvest_target_node.amount<=0:
 			harvest_target_node=null
-			moving=false
+				if carried_amount>0:return_to_storage()
+				else:moving=false
 		else:
 			var hd=harvest_target_node.position-position
 			if hd.length()>30.0:
@@ -111,13 +151,14 @@ func _process(delta:float)->void:
 			else:
 				moving=false
 				harvest_timer+=delta
-				if harvest_timer>=1.5:
+				if carried_amount>=cargo_capacity:return_to_storage()
+				elif harvest_timer>=1.5:
 					harvest_timer=0.0
-					var gathered=harvest_target_node.harvest(10)
-					var parent=get_parent()
-					if parent!=null and parent.has_method("update_status"):
-						parent.resources[harvest_target_node.resource_type]+=gathered
-						parent.update_status()
+					var gathered=harvest_target_node.harvest(min(10,cargo_capacity-carried_amount))
+					carried_amount+=gathered
+					carried_type=harvest_target_node.resource_type
+					if carried_amount>=cargo_capacity:return_to_storage()
+					elif harvest_target_node.amount<=0:return_to_storage()
 	attack_timer=max(0.0,attack_timer-delta)
 	acquire_timer-=delta
 	if team==1 and target==null and acquire_timer<=0.0:
@@ -137,16 +178,16 @@ func _process(delta:float)->void:
 				else:
 					var slide_x=position+Vector2(step.x,0)
 					var slide_y=position+Vector2(0,step.y)
-					if not parent.is_unit_position_blocked(slide_x,self,target): position=slide_x
-					elif not parent.is_unit_position_blocked(slide_y,self,target): position=slide_y
+					if not parent.is_unit_position_blocked(slide_x,self,target):position=slide_x
+					elif not parent.is_unit_position_blocked(slide_y,self,target):position=slide_y
 			elif attack_timer<=0.0:
 				target.take_damage(attack_damage)
 				attack_timer=attack_cooldown
-				if target!=null and is_instance_valid(target) and target.health>0 and target is Node2D and target.has_method("attack_target") and target.team!=team:
+				if is_instance_valid(target) and target.health>0 and target.has_method("attack_target") and target.team!=team:
 					target.attack_target(self)
 	if moving and target==null:
 		var d=destination-position
-		if d.length()<3.0:
+		if d.length()<3.0 and harvest_target_node==null and storage_target==null:
 			position=destination
 			moving=false
 		else:
@@ -158,5 +199,5 @@ func _process(delta:float)->void:
 			else:
 				var slide_x=position+Vector2(step.x,0)
 				var slide_y=position+Vector2(0,step.y)
-				if not parent.is_unit_position_blocked(slide_x,self): position=slide_x
-				elif not parent.is_unit_position_blocked(slide_y,self): position=slide_y
+				if not parent.is_unit_position_blocked(slide_x,self):position=slide_x
+				elif not parent.is_unit_position_blocked(slide_y,self):position=slide_y
