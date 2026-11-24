@@ -138,9 +138,17 @@ func return_to_storage()->void:
 	storage_target=parent.get_nearest_storage(position)
 	harvest_target_node=null
 	moving=storage_target!=null
+	path_pending=false
+	route=PackedVector2Array()
+	route_index=0
 	if storage_target!=null:
-		destination=storage_target.position
+		# Aim for an accessible point just outside the storage footprint.
+		var direction=(position-storage_target.position).normalized()
+		if direction.length()<0.1:direction=Vector2(1,0)
+		destination=storage_target.position+direction*52.0
 		set_route(destination)
+	else:
+		moving=false
 
 func build_target(site:Node2D)->void:
 	if team!=0 or site==null or not is_instance_valid(site) or site.is_complete:return
@@ -197,7 +205,7 @@ func _process(delta:float)->void:
 		if not is_instance_valid(storage_target) or storage_target.health<=0:
 			storage_target=null
 			moving=false
-		elif position.distance_to(storage_target.position)<=58.0:
+		elif position.distance_to(storage_target.position)<=76.0:
 			moving=false
 			var parent=get_parent()
 			if parent!=null and carried_amount>0:
@@ -212,7 +220,9 @@ func _process(delta:float)->void:
 					moving=false
 		else:
 			moving=true
-			destination=storage_target.position
+			var approach_direction=(position-storage_target.position).normalized()
+			if approach_direction.length()<0.1:approach_direction=Vector2(1,0)
+			destination=storage_target.position+approach_direction*52.0
 			if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 	if harvest_target_node!=null and storage_target==null:
 		if not is_instance_valid(harvest_target_node) or harvest_target_node.amount<=0:
