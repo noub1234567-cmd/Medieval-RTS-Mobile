@@ -18,6 +18,7 @@ var attack_cooldown:=1.0
 var attack_timer:=0.0
 var acquire_timer:=0.0
 var harvest_target_node:Node2D=null
+var resume_harvest_node:Node2D=null
 var harvest_timer:=0.0
 var carried_amount:=0
 var carried_type:String=""
@@ -83,6 +84,7 @@ func harvest_target(node:Node2D)->void:
 	storage_target=null
 	build_target_site=null
 	harvest_target_node=node
+	resume_harvest_node=node
 	moving=true
 	destination=node.position
 	set_route(destination)
@@ -140,7 +142,7 @@ func update_health_bar()->void:
 func _process(delta:float)->void:
 	# Workers carry full loads to storage and automatically resume the same deposit,
 	# or select the nearest remaining deposit of that resource if it was exhausted.
-	if storage_target!=null:
+\tif storage_target!=null:
 		if not is_instance_valid(storage_target) or storage_target.health<=0:
 			storage_target=null
 			moving=false
@@ -154,10 +156,11 @@ func _process(delta:float)->void:
 					var old_type=carried_type
 					carried_type=""
 					storage_target=null
-					if is_instance_valid(harvest_target_node) and harvest_target_node.amount>0:
-						harvest_target(harvest_target_node)
+					if is_instance_valid(resume_harvest_node) and resume_harvest_node.amount>0:
+						harvest_target(resume_harvest_node)
 					else:
 						harvest_target_node=null
+						resume_harvest_node=null
 						var next_node=parent.get_nearest_resource_node(position,old_type)
 						if next_node!=null:harvest_target(next_node)
 				else:
