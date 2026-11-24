@@ -8,6 +8,8 @@ const OverlayScene := preload("res://scenes/selection_overlay.tscn")
 const BuildingScript := preload("res://scripts/building.gd")
 
 var units: Array[Node2D] = []
+var pathfinding_queue:Array[Node2D]=[]
+var pathfinding_budget:=2
 var selected: Array[Node2D] = []
 var drag_start := Vector2.ZERO
 var dragging := false
@@ -525,6 +527,7 @@ func _process(delta:float) -> void:
 	if enemy_attack_active:
 		monitor_enemy_attack()
 	units=units.filter(func(u): return is_instance_valid(u) and u.health>0)
+	process_pathfinding_queue()
 	buildings=buildings.filter(func(b): return is_instance_valid(b) and b.health>0)
 	enemy_buildings=enemy_buildings.filter(func(b): return is_instance_valid(b) and b.health>0)
 	selected=selected.filter(func(u): return is_instance_valid(u) and u.health>0)
@@ -660,6 +663,18 @@ func monitor_enemy_attack() -> void:
 	if living==0:
 		enemy_attack_active=false
 		enemy_attack_group.clear()
+
+func request_path(unit:Node2D,to_pos:Vector2)->void:
+	if not pathfinding_queue.has(unit):
+		pathfinding_queue.append(unit)
+	unit.pending_path_destination=to_pos
+
+func process_pathfinding_queue()->void:
+	var count=min(pathfinding_budget,pathfinding_queue.size())
+	for i in range(count):
+		var unit=pathfinding_queue.pop_front()
+		if is_instance_valid(unit):
+			unit.execute_pending_path()
 
 func world_to_grid(pos:Vector2)->Vector2i:
 	var sx=pos.x/32.0
