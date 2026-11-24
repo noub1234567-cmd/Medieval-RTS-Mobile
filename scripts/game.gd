@@ -38,6 +38,8 @@ var enemy_attack_group: Array[Node2D] = []
 var enemy_attack_active := false
 var enemy_attack_losses := 0
 var tree_positions: Array[Vector2] = []
+var resource_nodes: Array[Node2D] = []
+const ResourceNodeScript := preload("res://scripts/resource_node.gd")
 var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}, "Guard Tower": {"wood": 120, "gold": 60}, "Wall": {"wood": 25, "gold": 5}}
 
 func _ready() -> void:
@@ -58,6 +60,7 @@ func _ready() -> void:
 			outline.default_color = Color(0.12,0.18,0.1,0.24)
 			tile.add_child(outline)
 	add_map_details()
+	create_resource_nodes()
 	for i in range(8):
 		var u: Node2D = UnitScene.instantiate()
 		add_child(u)
@@ -85,6 +88,21 @@ func add_map_details() -> void:
 		tree.color = Color(0.12,0.32,0.16)
 		tree.z_index = 1
 		add_child(tree)
+
+func create_resource_nodes() -> void:
+	var deposits:Array[Dictionary]=[
+		{"type":"wood","cell":Vector2i(9,14),"amount":650},{"type":"wood","cell":Vector2i(16,7),"amount":700},{"type":"wood","cell":Vector2i(21,17),"amount":600},{"type":"wood","cell":Vector2i(35,21),"amount":700},
+		{"type":"food","cell":Vector2i(5,20),"amount":450},{"type":"food","cell":Vector2i(18,31),"amount":500},{"type":"food","cell":Vector2i(32,7),"amount":450},
+		{"type":"gold","cell":Vector2i(19,9),"amount":800},{"type":"gold","cell":Vector2i(7,25),"amount":750},{"type":"gold","cell":Vector2i(34,33),"amount":900},
+		{"type":"stone","cell":Vector2i(14,27),"amount":700},{"type":"stone","cell":Vector2i(23,5),"amount":750},{"type":"stone","cell":Vector2i(37,15),"amount":800}]
+	for deposit in deposits:
+		var node:=Node2D.new()
+		node.set_script(ResourceNodeScript)
+		node.resource_type=deposit.type
+		node.amount=deposit.amount
+		node.position=grid_to_screen(deposit.cell)
+		add_child(node)
+		resource_nodes.append(node)
 
 func tile_color(x:int,y:int) -> Color:
 	var v := float((x*17+y*31)%11)/100.0
@@ -177,6 +195,18 @@ func add_selection(u:Node2D) -> void:
 
 func attack_or_move(target_pos:Vector2) -> void:
 	if selected.is_empty(): return
+	var resource_node:Node2D=null
+	var resource_distance:=55.0
+	for node in resource_nodes:
+		if is_instance_valid(node) and node.amount>0:
+			var rd=node.position.distance_to(target_pos)
+			if rd<resource_distance:
+				resource_distance=rd
+				resource_node=node
+	if resource_node!=null:
+		for worker in selected: worker.harvest_target(resource_node)
+		help_label.text="Harvest order issued!"
+		return
 	var enemy:Node2D=null
 	var best_distance:=55.0
 	for u in units:
@@ -232,7 +262,7 @@ func create_hud() -> void:
 		b.pressed.connect(func(): begin_placement(building_name))
 		buttons.add_child(b)
 	help_label=Label.new()
-	help_label.text="Select: tap / drag   Attack/Move: right-click
+	help_label.text="Select: tap / drag   Move/Harvest/Attack: right-click
 Camera: WASD / arrows   Zoom: wheel"
 	help_label.add_theme_font_size_override("font_size",14)
 	v.add_child(help_label)
@@ -320,9 +350,7 @@ func place_building(pos:Vector2) -> void:
 
 func update_status() -> void:
 	if status_label:
-		status_label.text="Wood: %d  Food: %d  Gold: %d
-Population: %d/%d  Selected: %d  Enemies: %d
-Buildings: %d  Enemy base: %d" % [resources.wood,resources.food,resources.gold,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size()]
+		status_label.text="Wood: %d  Food: %d  Gold: %d  Stone: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d  Enemy base: %d" % [resources.wood,resources.food,resources.gold,resources.stone,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size()]
 
 func _process(delta:float) -> void:
 	if enemy_attack_active:
