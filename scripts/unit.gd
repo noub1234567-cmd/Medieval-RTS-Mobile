@@ -315,7 +315,19 @@ func move_along_route(delta:float,parent:Node,target_override:Node=null)->void:
 		if moved:
 			stuck_timer=0.0
 		else:
+			# Try a short lateral sidestep to escape unit congestion before replanning.
+			var lateral=Vector2(-direction.normalized().y,direction.normalized().x)
+			var sidestep= speed*delta*0.8
+			var escaped=false
+			for side in [1.0,-1.0]:
+				var side_candidate=position+lateral*side*sidestep
+				if not parent.is_unit_position_blocked(side_candidate,self,target_override):
+					position=side_candidate
+					escaped=true
+					break
 			stuck_timer+=delta
-			if stuck_timer>=1.0:
+			if escaped:
+				stuck_timer=0.0
+			elif stuck_timer>=0.75:
 				set_route(destination)
 				stuck_timer=0.0
