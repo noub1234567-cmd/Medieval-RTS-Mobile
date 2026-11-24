@@ -87,8 +87,7 @@ func move_to(p:Vector2)->void:
 	harvest_target_node=null
 	storage_target=null
 	build_target_site=null
-	carried_amount=0
-	carried_type=""
+	# Manual movement cancels the work assignment, but must not discard carried resources.
 	resume_harvest_node=null
 	destination=p
 	moving=true
