@@ -224,7 +224,7 @@ func create_hud() -> void:
 	recruit.text="Recruit soldier"
 	recruit.pressed.connect(recruit_soldier)
 	buttons.add_child(recruit)
-	for building_name in ["Farm", "House", "Barracks"]:
+	for building_name in ["Farm", "House", "Barracks", "Guard Tower", "Wall"]:
 		var b:=Button.new()
 		b.text=building_name
 		b.pressed.connect(func(): begin_placement(building_name))
@@ -301,7 +301,7 @@ func place_building(pos:Vector2) -> void:
 	structure.position=pos
 	var shape:=Polygon2D.new()
 	shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
-	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4)}[pending_building]
+	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4),"Guard Tower":Color(0.35,0.55,0.65),"Wall":Color(0.45,0.42,0.38)}[pending_building]
 	structure.add_child(shape)
 	var label:=Label.new()
 	label.text=pending_building
