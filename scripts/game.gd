@@ -756,8 +756,8 @@ func is_unit_position_blocked(pos:Vector2, mover:Node2D, attack_target:Node2D=nu
 	for tree_pos in tree_positions:
 		if pos.distance_to(tree_pos)<26.0:
 			return true
-	# Keep soldiers from stacking on top of one another.
+	# Unit collisions are soft: only prevent near-exact overlap, so crowds can flow past each other.
 	for other in units:
-		if is_instance_valid(other) and other!=mover and other.health>0 and pos.distance_to(other.position)<18.0:
+		if is_instance_valid(other) and other!=mover and other.health>0 and pos.distance_to(other.position)<12.0:
 			return true
 	return false
