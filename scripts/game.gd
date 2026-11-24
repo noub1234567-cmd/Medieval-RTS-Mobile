@@ -9,7 +9,7 @@ var units: Array[Node2D] = []
 var selected: Array[Node2D] = []
 var drag_start := Vector2.ZERO
 var dragging := false
-var camera_offset := Vector2.ZERO
+var camera_offset := Vector2(0,-640)
 var zoom_level := 1.0
 const OverlayScene = preload("res://scenes/selection_overlay.tscn")
 
