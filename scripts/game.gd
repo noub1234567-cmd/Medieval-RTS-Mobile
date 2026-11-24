@@ -198,7 +198,7 @@ func create_hud() -> void:
 		b.pressed.connect(func(): begin_placement(building_name))
 		buttons.add_child(b)
 	help_label=Label.new()
-	help_label.text="Select: tap / drag     Move: right-click\nCamera: WASD / arrows     Zoom: wheel"
+	help_label.text="Select: tap / drag   Attack/Move: right-click\nCamera: WASD / arrows   Zoom: wheel"
 	help_label.add_theme_font_size_override("font_size",14)
 	v.add_child(help_label)
 
