@@ -319,6 +319,10 @@ func _process(delta:float) -> void:
 		monitor_enemy_attack()
 	units=units.filter(func(u): return is_instance_valid(u) and u.health>0)
 	selected=selected.filter(func(u): return is_instance_valid(u) and u.health>0)
+	enemy_ai_timer += delta
+	if enemy_ai_timer >= 8.0:
+		enemy_ai_timer = 0.0
+		enemy_ai_step()
 	enemy_attack_timer += delta
 	if enemy_attack_timer >= enemy_attack_cooldown:
 		enemy_attack_timer = 0.0
