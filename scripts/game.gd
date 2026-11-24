@@ -37,6 +37,7 @@ var enemy_attack_level := 0
 var enemy_attack_group: Array[Node2D] = []
 var enemy_attack_active := false
 var enemy_attack_losses := 0
+var tree_positions: Array[Vector2] = []
 var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}, "Guard Tower": {"wood": 120, "gold": 60}, "Wall": {"wood": 25, "gold": 5}}
 
 func _ready() -> void:
@@ -80,6 +81,7 @@ func add_map_details() -> void:
 		var tree := Polygon2D.new()
 		tree.polygon = PackedVector2Array([Vector2(0,-22),Vector2(12,-6),Vector2(8,7),Vector2(0,12),Vector2(-8,7),Vector2(-12,-6)])
 		tree.position = grid_to_screen(p)+Vector2(0,-10)
+		tree_positions.append(grid_to_screen(p))
 		tree.color = Color(0.12,0.32,0.16)
 		tree.z_index = 1
 		add_child(tree)
@@ -466,6 +468,10 @@ func is_unit_position_blocked(pos:Vector2, mover:Node2D, attack_target:Node2D=nu
 	# Buildings block movement; the active target is exempt so units can approach it.
 	for structure in buildings + enemy_buildings:
 		if is_instance_valid(structure) and structure!=attack_target and structure.health>0 and pos.distance_to(structure.position)<34.0:
+			return true
+	# Trees are solid obstacles for movement.
+	for tree_pos in tree_positions:
+		if pos.distance_to(tree_pos)<26.0:
 			return true
 	# Keep soldiers from stacking on top of one another.
 	for other in units:
