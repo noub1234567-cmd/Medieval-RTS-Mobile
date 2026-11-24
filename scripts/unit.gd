@@ -130,47 +130,49 @@ func _process(delta:float)->void:
 		if not is_instance_valid(storage_target) or storage_target.health<=0:
 			storage_target=null
 			moving=false
-		else:
-			if position.distance_to(storage_target.position)<=38.0:
-				moving=false
-				var parent=get_parent()
-				if parent!=null and carried_amount>0:
-					var delivered=parent.deliver_resource(carried_type,carried_amount)
-					carried_amount-=delivered
-					if carried_amount<=0:
-						carried_type=""
-						storage_target=null
-						if harvest_target_node!=null and is_instance_valid(harvest_target_node):
-							harvest_target(harvest_target_node)
-					else:
-							storage_target=null
-					else:
-						moving=true
-						destination=storage_target.position
+		elif position.distance_to(storage_target.position)<=38.0:
+			moving=false
+			var parent=get_parent()
+			if parent!=null and carried_amount>0:
+				var delivered:int=parent.deliver_resource(carried_type,carried_amount)
+				carried_amount-=delivered
+				if carried_amount<=0:
+					carried_type=""
+					storage_target=null
+					if is_instance_valid(harvest_target_node):
+						harvest_target(harvest_target_node)
+				else:
+						moving=false
 			else:
 				moving=true
 				destination=storage_target.position
+		else:
+			moving=true
+			destination=storage_target.position
 	if harvest_target_node!=null:
 		if not is_instance_valid(harvest_target_node) or harvest_target_node.amount<=0:
 			harvest_target_node=null
-				if carried_amount>0:return_to_storage()
-				else:moving=false
+			if carried_amount>0:
+				return_to_storage()
+			else:
+				moving=false
 		else:
-			var hd=harvest_target_node.position-position
+			var hd:Vector2=harvest_target_node.position-position
 			if hd.length()>30.0:
 				moving=true
 				destination=harvest_target_node.position
 			else:
 				moving=false
 				harvest_timer+=delta
-				if carried_amount>=cargo_capacity:return_to_storage()
+				if carried_amount>=cargo_capacity:
+					return_to_storage()
 				elif harvest_timer>=1.5:
 					harvest_timer=0.0
-					var gathered=harvest_target_node.harvest(min(10,cargo_capacity-carried_amount))
+					var gathered:int=harvest_target_node.harvest(min(10,cargo_capacity-carried_amount))
 					carried_amount+=gathered
 					carried_type=harvest_target_node.resource_type
-					if carried_amount>=cargo_capacity:return_to_storage()
-					elif harvest_target_node.amount<=0:return_to_storage()
+					if carried_amount>=cargo_capacity or harvest_target_node.amount<=0:
+						return_to_storage()
 	if build_target_site!=null:
 		if not is_instance_valid(build_target_site) or build_target_site.is_complete:
 			build_target_site=null
@@ -190,9 +192,9 @@ func _process(delta:float)->void:
 		if not is_instance_valid(target) or target.health<=0:
 			target=null
 		else:
-			var d=target.position-position
+			var d:Vector2=target.position-position
 			if d.length()>attack_range:
-				var step=d.normalized()*min(speed*delta,d.length()-attack_range+2.0)
+				var step:Vector2=d.normalized()*min(speed*delta,d.length()-attack_range+2.0)
 				var parent=get_parent()
 				var candidate=position+step
 				if not parent.has_method("is_unit_position_blocked") or not parent.is_unit_position_blocked(candidate,self,target):
@@ -208,18 +210,18 @@ func _process(delta:float)->void:
 				if is_instance_valid(target) and target.health>0 and target.has_method("attack_target") and target.team!=team:
 					target.attack_target(self)
 	if moving and target==null:
-		var d=destination-position
-		if d.length()<3.0 and harvest_target_node==null and storage_target==null and build_target_site==null:
+		var d2:Vector2=destination-position
+		if d2.length()<3.0 and harvest_target_node==null and storage_target==null and build_target_site==null:
 			position=destination
 			moving=false
 		else:
-			var step=d.normalized()*min(speed*delta,d.length())
-			var candidate=position+step
-			var parent=get_parent()
-			if not parent.has_method("is_unit_position_blocked") or not parent.is_unit_position_blocked(candidate,self):
-				position=candidate
+			var step2:Vector2=d2.normalized()*min(speed*delta,d2.length())
+			var candidate2=position+step2
+			var parent2=get_parent()
+			if not parent2.has_method("is_unit_position_blocked") or not parent2.is_unit_position_blocked(candidate2,self):
+				position=candidate2
 			else:
-				var slide_x=position+Vector2(step.x,0)
-				var slide_y=position+Vector2(0,step.y)
-				if not parent.is_unit_position_blocked(slide_x,self):position=slide_x
-				elif not parent.is_unit_position_blocked(slide_y,self):position=slide_y
+				var slide_x2=position+Vector2(step2.x,0)
+				var slide_y2=position+Vector2(0,step2.y)
+				if not parent2.is_unit_position_blocked(slide_x2,self):position=slide_x2
+				elif not parent2.is_unit_position_blocked(slide_y2,self):position=slide_y2
