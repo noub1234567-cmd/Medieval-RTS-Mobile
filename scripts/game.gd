@@ -296,7 +296,7 @@ func place_building(pos:Vector2) -> void:
 
 func update_status() -> void:
 	if status_label:
-		status_label.text="Wood: %d  Food: %d  Gold: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d" % [resources.wood,resources.food,resources.gold,population,population_cap,selected.size(),enemy_count(),buildings.size()]
+		status_label.text="Wood: %d  Food: %d  Gold: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d  Enemy base: %d" % [resources.wood,resources.food,resources.gold,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size()]
 
 func _process(delta:float) -> void:
 	units=units.filter(func(u): return is_instance_valid(u) and u.health>0)
