@@ -22,6 +22,9 @@ var resources := {"wood": 300, "food": 250, "gold": 200}
 var buildings: Array[Node2D] = []
 var placing_building := false
 var pending_building := ""
+var population := 8
+var population_cap := 8
+var income_timer := 0.0
 var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}}
 
 func _ready() -> void:
@@ -240,15 +243,23 @@ func place_building(pos:Vector2) -> void:
 	structure.add_child(label)
 	add_child(structure)
 	buildings.append(structure)
+	if pending_building=="House": population_cap+=5
 	placing_building=false
 	help_label.text="Right-click moves units. Choose building then tap map."
 	update_status()
 
 func update_status() -> void:
 	if status_label:
-		status_label.text="Wood: %d  Food: %d  Gold: %d\nSelected: %d  Enemies: %d  Buildings: %d" % [resources.wood,resources.food,resources.gold,selected.size(),enemy_count(),buildings.size()]
+		status_label.text="Wood: %d  Food: %d  Gold: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d" % [resources.wood,resources.food,resources.gold,population,population_cap,selected.size(),enemy_count(),buildings.size()]
 
 func _process(delta:float) -> void:
+	income_timer+=delta
+	if income_timer>=5.0:
+		income_timer=0.0
+		for b in buildings:
+			if b.name=="Farm": resources.food+=10
+			elif b.name=="House": resources.gold+=3
+		update_status()
 	var motion:=Vector2.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): motion.x+=1
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): motion.x-=1
