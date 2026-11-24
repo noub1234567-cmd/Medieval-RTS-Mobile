@@ -742,8 +742,8 @@ func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Arr
 		if not came_from.has(cell):break
 		cell=came_from[cell]
 	var points:=PackedVector2Array()
-	for i in range(cells.size()):
-		if i==cells.size()-1 or i%3==0:points.append(grid_to_screen(cells[i]))
+	for cell_point in cells:
+		points.append(grid_to_screen(cell_point))
 	points.append(end_pos)
 	return points
 
