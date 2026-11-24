@@ -415,7 +415,7 @@ func make_panel_style() -> StyleBoxFlat:
 func recruit_soldier() -> void:
 	var has_barracks:=false
 	for b in buildings:
-		if b.name=="Barracks": has_barracks=true
+		if b.name=="Barracks" and b.is_complete: has_barracks=true
 	if not has_barracks:
 		help_label.text="Build a Barracks first"
 		return
@@ -432,10 +432,18 @@ func recruit_soldier() -> void:
 	add_child(soldier)
 	soldier.set_team(0)
 	var barracks:Node2D=buildings.filter(func(b): return b.name=="Barracks")[0]
-	soldier.position=barracks.position+Vector2(30,20)
+	soldier.position=find_spawn_position(barracks.position)
 	units.append(soldier)
 	update_status()
 	help_label.text="Soldier recruited!"
+
+func find_spawn_position(origin:Vector2)->Vector2:
+	var offsets=[Vector2(48,0),Vector2(-48,0),Vector2(0,48),Vector2(0,-48),Vector2(48,48),Vector2(-48,-48),Vector2(48,-48),Vector2(-48,48)]
+	for off in offsets:
+		var p=origin+off
+		if not is_unit_position_blocked(p,null):
+			return p
+	return origin+Vector2(60,60)
 
 func enemy_count() -> int:
 	var count:=0
@@ -477,9 +485,7 @@ func place_building(pos:Vector2) -> void:
 	structure.add_child(label)
 	add_child(structure)
 	buildings.append(structure)
-	if pending_building=="House": population_cap+=5
-	if pending_building=="Warehouse": storage_capacity+=1500
-	if pending_building=="Warehouse": storage_points.append(structure)
+	construction_sites.append(structure)
 	placing_building=false
 	help_label.text="Tap units then tap destination. Drag to pan."
 	update_status()
@@ -487,7 +493,9 @@ func place_building(pos:Vector2) -> void:
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
 	if b.name=="House":population_cap+=5
-	if b.name=="Warehouse":storage_capacity+=1500;storage_points.append(b)
+	if b.name=="Warehouse":
+		storage_capacity+=1500
+		storage_points.append(b)
 	update_status()
 
 func update_status() -> void:
