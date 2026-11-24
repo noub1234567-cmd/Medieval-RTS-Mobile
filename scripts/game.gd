@@ -188,6 +188,10 @@ func create_hud() -> void:
 	v.add_child(status_label)
 	var buttons:=HBoxContainer.new()
 	v.add_child(buttons)
+	var recruit:=Button.new()
+	recruit.text="Recruit soldier"
+	recruit.pressed.connect(recruit_soldier)
+	buttons.add_child(recruit)
 	for building_name in ["Farm", "House", "Barracks"]:
 		var b:=Button.new()
 		b.text=building_name
@@ -209,6 +213,31 @@ func make_panel_style() -> StyleBoxFlat:
 	s.content_margin_top=8
 	s.content_margin_bottom=8
 	return s
+
+func recruit_soldier() -> void:
+	var has_barracks:=false
+	for b in buildings:
+		if b.name=="Barracks": has_barracks=true
+	if not has_barracks:
+		help_label.text="Build a Barracks first"
+		return
+	if population>=population_cap:
+		help_label.text="Population limit reached"
+		return
+	if resources.food<50 or resources.gold<25:
+		help_label.text="Recruitment costs 50 food and 25 gold"
+		return
+	resources.food-=50
+	resources.gold-=25
+	population+=1
+	var soldier:Node2D=UnitScene.instantiate()
+	add_child(soldier)
+	soldier.set_team(0)
+	var barracks:Node2D=buildings.filter(func(b): return b.name=="Barracks")[0]
+	soldier.position=barracks.position+Vector2(30,20)
+	units.append(soldier)
+	update_status()
+	help_label.text="Soldier recruited!"
 
 func enemy_count() -> int:
 	var count:=0
