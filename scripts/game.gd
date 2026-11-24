@@ -661,6 +661,61 @@ func monitor_enemy_attack() -> void:
 		enemy_attack_active=false
 		enemy_attack_group.clear()
 
+func world_to_grid(pos:Vector2)->Vector2i:
+	var sx=pos.x/32.0
+	var sy=pos.y/16.0
+	return Vector2i(roundi((sx+sy)/2.0),roundi((sy-sx)/2.0))
+
+func is_cell_blocked(cell:Vector2i,mover:Node2D)->bool:
+	if cell.x<0 or cell.y<0 or cell.x>=GRID.x or cell.y>=GRID.y:return true
+	var p=grid_to_screen(cell)
+	for b in buildings+enemy_buildings:
+		if is_instance_valid(b) and b.health>0 and p.distance_to(b.position)<42.0:return true
+	for t in tree_positions:
+		if p.distance_to(t)<30.0:return true
+	for other in units:
+		if is_instance_valid(other) and other!=mover and other.health>0 and p.distance_to(other.position)<22.0:return true
+	return false
+
+func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Array:
+	var start=world_to_grid(start_pos)
+	var finish=world_to_grid(end_pos)
+	if start==finish:return PackedVector2Array([end_pos])
+	var open:Array[Vector2i]=[start]
+	var came_from:Dictionary={}
+	var costs:Dictionary={start:0.0}
+	var scores:Dictionary={start:float(start.distance_to(finish))}
+	var visited=0
+	while not open.is_empty() and visited<1600:
+		visited+=1
+		var current=open[0]
+		for cell in open:
+			if scores.get(cell,INF)<scores.get(current,INF):current=cell
+		if current==finish:break
+		open.erase(current)
+		for delta in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1),Vector2i(1,1),Vector2i(1,-1),Vector2i(-1,1),Vector2i(-1,-1)]:
+			var next=current+delta
+			if next!=finish and is_cell_blocked(next,mover):continue
+			var step=1.0 if abs(delta.x)+abs(delta.y)==1 else 1.4
+			var new_cost=costs[current]+step
+			if new_cost<costs.get(next,INF):
+				came_from[next]=current
+				costs[next]=new_cost
+				scores[next]=new_cost+float(next.distance_to(finish))
+				if not open.has(next):open.append(next)
+	if not came_from.has(finish):return PackedVector2Array([end_pos])
+	var cells:Array[Vector2i]=[]
+	var cell=finish
+	while cell!=start:
+		cells.push_front(cell)
+		if not came_from.has(cell):break
+		cell=came_from[cell]
+	var points:=PackedVector2Array()
+	for i in range(cells.size()):
+		if i==cells.size()-1 or i%2==0:points.append(grid_to_screen(cells[i]))
+	points.append(end_pos)
+	return points
+
 func is_unit_position_blocked(pos:Vector2, mover:Node2D, attack_target:Node2D=null) -> bool:
 	# Buildings block movement; the active target is exempt so units can approach it.
 	for structure in buildings + enemy_buildings:
