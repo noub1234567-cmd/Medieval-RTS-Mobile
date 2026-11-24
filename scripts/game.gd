@@ -122,18 +122,20 @@ func create_player_storage() -> void:
 	storage_points.append(depot)
 
 func get_nearest_storage(pos:Vector2)->Node2D:
-	# Rebuild the candidate list from live buildings so newly completed warehouses
-	# are never missed due to a stale storage_points registration.
 	var nearest:Node2D=null
-	var distance:=INF
-	for depot in buildings:
-		if not is_instance_valid(depot) or depot.health<=0 or depot.team!=0:continue
-		var is_depot=(depot.building_type=="Town Center" or (depot.building_type=="Warehouse" and depot.is_complete))
-		if not is_depot:continue
-		var d=pos.distance_to(depot.position)
-		if d<distance:
-			distance=d
-			nearest=depot
+	var best_distance_squared:=INF
+	# Evaluate every live, completed player storage using straight-line world distance.
+	for building in buildings:
+		if not is_instance_valid(building) or building.health<=0 or building.team!=0:
+			continue
+		if building.building_type!="Town Center" and building.building_type!="Warehouse":
+			continue
+		if building.building_type=="Warehouse" and not building.is_complete:
+			continue
+		var distance_squared:=pos.distance_squared_to(building.position)
+		if distance_squared<best_distance_squared:
+			best_distance_squared=distance_squared
+			nearest=building
 	return nearest
 
 func get_nearest_resource_node(pos:Vector2,resource_type:String)->Node2D:
