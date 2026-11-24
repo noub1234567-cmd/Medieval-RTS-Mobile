@@ -106,10 +106,22 @@ func harvest_target(node:Node2D)->void:
 	set_route(destination)
 
 func resume_after_delivery(resource_type:String,parent:Node)->void:
+	# Reset the storage/movement state before assigning the worker back to harvesting.
 	harvest_timer=0.0
+	storage_target=null
+	build_target_site=null
+	target=null
+	carried_amount=0
+	carried_type=""
 	harvest_target_node=null
+	moving=false
+	path_pending=false
+	route=PackedVector2Array()
+	route_index=0
 	if is_instance_valid(resume_harvest_node) and resume_harvest_node.amount>0:
-		harvest_target(resume_harvest_node)
+		var previous_deposit=resume_harvest_node
+		resume_harvest_node=null
+		harvest_target(previous_deposit)
 		return
 	resume_harvest_node=null
 	if parent!=null and resource_type!="":
@@ -187,8 +199,6 @@ func _process(delta:float)->void:
 				carried_amount-=delivered
 				if carried_amount<=0:
 					var old_type=carried_type
-					carried_type=""
-					storage_target=null
 					resume_after_delivery(old_type,parent)
 				else:
 					# Storage is full: stop here instead of repeatedly attempting an impossible deposit.
