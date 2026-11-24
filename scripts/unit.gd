@@ -285,13 +285,37 @@ func move_along_route(delta:float,parent:Node,target_override:Node=null)->void:
 			return
 		route_index+=1
 		return
-	var step=direction.normalized()*min(speed*delta,direction.length())
+	# Add gentle lateral steering around nearby units instead of freezing on collision.
+	var steer=Vector2.ZERO
+	for other in parent.units:
+		if is_instance_valid(other) and other!=self and other.health>0:
+			var separation=position-other.position
+			var distance=separation.length()
+			if distance>0.0 and distance<28.0:
+				steer+=separation.normalized()*(28.0-distance)/28.0
+	var move_direction=direction.normalized()
+	if steer.length()>0.01:
+		move_direction=(move_direction+steer*0.65).normalized()
+	var step=move_direction*min(speed*delta,direction.length())
 	var candidate=position+step
 	if not parent.has_method("is_unit_position_blocked") or not parent.is_unit_position_blocked(candidate,self,target_override):
 		position=candidate
 		stuck_timer=0.0
 	else:
-		stuck_timer+=delta
-		if stuck_timer>=1.0:
-			set_route(destination)
+		# Slide along static obstacles by testing each axis separately.
+		var slide_x=position+Vector2(step.x,0)
+		var slide_y=position+Vector2(0,step.y)
+		var moved=false
+		if abs(step.x)>0.1 and not parent.is_unit_position_blocked(slide_x,self,target_override):
+			position=slide_x
+			moved=true
+		elif abs(step.y)>0.1 and not parent.is_unit_position_blocked(slide_y,self,target_override):
+			position=slide_y
+			moved=true
+		if moved:
 			stuck_timer=0.0
+		else:
+			stuck_timer+=delta
+			if stuck_timer>=1.0:
+				set_route(destination)
+				stuck_timer=0.0
