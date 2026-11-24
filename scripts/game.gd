@@ -176,13 +176,20 @@ func add_selection(u:Node2D) -> void:
 func attack_or_move(target_pos:Vector2) -> void:
 	if selected.is_empty(): return
 	var enemy:Node2D=null
-	var best_distance:=48.0
+	var best_distance:=55.0
 	for u in units:
 		if is_instance_valid(u) and u.team==1:
 			var d=u.position.distance_to(target_pos)
 			if d<best_distance:
 				best_distance=d
 				enemy=u
+	if enemy==null:
+		for structure in enemy_buildings:
+			if is_instance_valid(structure) and structure.health>0:
+				var d=structure.position.distance_to(target_pos)
+				if d<best_distance:
+					best_distance=d
+					enemy=structure
 	if enemy!=null:
 		for soldier in selected: soldier.attack_target(enemy)
 		help_label.text="Attack order issued!"
@@ -318,6 +325,8 @@ func _process(delta:float) -> void:
 	if enemy_attack_active:
 		monitor_enemy_attack()
 	units=units.filter(func(u): return is_instance_valid(u) and u.health>0)
+	buildings=buildings.filter(func(b): return is_instance_valid(b) and b.health>0)
+	enemy_buildings=enemy_buildings.filter(func(b): return is_instance_valid(b) and b.health>0)
 	selected=selected.filter(func(u): return is_instance_valid(u) and u.health>0)
 	enemy_ai_timer += delta
 	if enemy_ai_timer >= 8.0:
@@ -409,7 +418,7 @@ func enemy_has_barracks() -> bool:
 func begin_enemy_attack() -> void:
 	var squad:Array[Node2D]=[]
 	for u in units:
-		if is_instance_valid(u) and u.team==1 and u.health>0 and not u.moving and u.target==null:
+		if is_instance_valid(u) and u.team==1 and u.health>0:
 			squad.append(u)
 	var required:=min(3+enemy_attack_level,6)
 	if squad.size()<required: return
