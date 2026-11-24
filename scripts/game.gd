@@ -295,8 +295,9 @@ func place_building(pos:Vector2) -> void:
 	var structure:=Node2D.new()
 	structure.set_script(BuildingScript)
 	structure.team=0
-	structure.max_health=300
-	structure.health=300
+	structure.max_health=500 if pending_building=="Guard Tower" else 200 if pending_building=="Wall" else 300
+	structure.health=structure.max_health
+	structure.building_type=pending_building
 	structure.name=pending_building
 	structure.position=pos
 	var shape:=Polygon2D.new()
