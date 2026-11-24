@@ -15,6 +15,10 @@ var camera_offset := Vector2(0, -640)
 var zoom_level := 1.0
 var drag_current := Vector2.ZERO
 var touch_pending := false
+var touch_start_screen := Vector2.ZERO
+var touch_pan := false
+var touch_unit_start := false
+var hud_collapsed := false
 
 var hud: CanvasLayer
 var status_label: Label
@@ -174,28 +178,73 @@ func _input(event:InputEvent) -> void:
 			if placing_building: place_building(screen_to_world(event.position))
 			else: attack_or_move(screen_to_world(event.position))
 		elif event.button_index==MOUSE_BUTTON_WHEEL_UP:
-			zoom_level=min(zoom_level*1.1,2.0)
+			zoom_level=min(zoom_level*1.12,2.2)
 			update_view()
 		elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN:
-			zoom_level=max(zoom_level/1.1,0.45)
+			zoom_level=max(zoom_level/1.12,0.35)
 			update_view()
 	elif event is InputEventKey and event.pressed and event.keycode==KEY_ESCAPE:
 		placing_building=false
-		help_label.text="Placement cancelled"
+		if is_instance_valid(help_label): help_label.text="Placement cancelled"
 	elif event is InputEventMouseMotion and dragging:
 		drag_current=screen_to_world(event.position)
 		overlay_update()
 	elif event is InputEventScreenTouch:
 		if event.pressed:
+			touch_start_screen=event.position
 			drag_start=screen_to_world(event.position)
 			drag_current=drag_start
+			touch_unit_start=find_player_unit_at(drag_start)!=null
+			touch_pan=false
 			dragging=true
-		elif dragging:
-			finish_selection(screen_to_world(event.position))
+		else:
+			if dragging:
+				var moved=event.position.distance_to(touch_start_screen)
+				if touch_pan and moved>20.0:
+					pass
+				elif placing_building:
+					place_building(screen_to_world(event.position))
+				elif moved>20.0 and touch_unit_start:
+					finish_selection(screen_to_world(event.position))
+				else:
+					touch_tap(screen_to_world(event.position))
+				dragging=false
+				get_node("SelectionOverlay").clear_rect()
+				update_status()
 			dragging=false
 	elif event is InputEventScreenDrag and dragging:
-		drag_current=screen_to_world(event.position)
-		overlay_update()
+		if not touch_unit_start and not placing_building:
+			touch_pan=true
+			camera_offset+=event.relative
+			update_view()
+		else:
+			drag_current=screen_to_world(event.position)
+			overlay_update()
+
+func find_player_unit_at(pos:Vector2)->Node2D:
+	var nearest:Node2D=null
+	var best=48.0
+	for unit in units:
+		if is_instance_valid(unit) and unit.team==0:
+			var d=unit.position.distance_to(pos)
+			if d<best:
+				best=d
+				nearest=unit
+	return nearest
+
+func touch_tap(pos:Vector2)->void:
+	if placing_building:
+		place_building(pos)
+		return
+	var unit=find_player_unit_at(pos)
+	if unit!=null:
+		clear_selection()
+		add_selection(unit)
+		return
+	if not selected.is_empty():
+		attack_or_move(pos)
+	else:
+		clear_selection()
 
 func overlay_update() -> void:
 	var overlay:Node = get_node("SelectionOverlay")
@@ -208,17 +257,7 @@ func finish_selection(end_pos:Vector2) -> void:
 		return
 	var box := Rect2(drag_start,end_pos-drag_start).abs()
 	if box.size.length()<14.0:
-		var nearest:Node2D=null
-		var distance:=44.0
-		for u in units:
-			if u.team==0:
-				var d:=u.position.distance_to(end_pos)
-				if d<distance:
-					distance=d
-					nearest=u
-		clear_selection()
-		if nearest!=null:
-			add_selection(nearest)
+		touch_tap(end_pos)
 	else:
 		clear_selection()
 		for u in units:
@@ -295,33 +334,68 @@ func create_hud() -> void:
 	hud=CanvasLayer.new()
 	add_child(hud)
 	var panel:=PanelContainer.new()
-	panel.position=Vector2(12,12)
+	panel.position=Vector2(8,8)
 	panel.add_theme_stylebox_override("panel",make_panel_style())
 	hud.add_child(panel)
 	var v:=VBoxContainer.new()
+	v.add_theme_constant_override("separation",2)
 	panel.add_child(v)
+	var top:=HBoxContainer.new()
+	v.add_child(top)
 	var title:=Label.new()
-	title.text="MEDIEVAL RTS  •  DEMO"
-	title.add_theme_font_size_override("font_size",20)
-	v.add_child(title)
+	title.text="MEDIEVAL RTS"
+	title.add_theme_font_size_override("font_size",14)
+	top.add_child(title)
+	var collapse:=Button.new()
+	collapse.text="−"
+	collapse.custom_minimum_size=Vector2(36,32)
+	collapse.pressed.connect(toggle_hud)
+	top.add_child(collapse)
 	status_label=Label.new()
+	status_label.add_theme_font_size_override("font_size",12)
 	v.add_child(status_label)
 	var buttons:=HBoxContainer.new()
+	buttons.add_theme_constant_override("separation",3)
 	v.add_child(buttons)
 	var recruit:=Button.new()
-	recruit.text="Recruit soldier"
+	recruit.text="Soldier"
+	recruit.custom_minimum_size=Vector2(64,36)
 	recruit.pressed.connect(recruit_soldier)
 	buttons.add_child(recruit)
-	for building_name in ["Farm", "House", "Barracks", "Guard Tower", "Wall", "Warehouse"]:
+	for building_name in ["Farm","House","Barracks","Tower","Wall","Store"]:
 		var b:=Button.new()
 		b.text=building_name
-		b.pressed.connect(func(): begin_placement(building_name))
+		b.custom_minimum_size=Vector2(54,36)
+		b.pressed.connect(func(): begin_placement("Guard Tower" if building_name=="Tower" else "Warehouse" if building_name=="Store" else building_name))
 		buttons.add_child(b)
+	var zoom_row:=HBoxContainer.new()
+	v.add_child(zoom_row)
+	var zoom_in:=Button.new()
+	zoom_in.text="+"
+	zoom_in.custom_minimum_size=Vector2(42,32)
+	zoom_in.pressed.connect(func(): change_zoom(1.15))
+	zoom_row.add_child(zoom_in)
+	var zoom_out:=Button.new()
+	zoom_out.text="−"
+	zoom_out.custom_minimum_size=Vector2(42,32)
+	zoom_out.pressed.connect(func(): change_zoom(0.87))
+	zoom_row.add_child(zoom_out)
 	help_label=Label.new()
-	help_label.text="Select: tap / drag   Move/Harvest/Attack: right-click
-Camera: WASD / arrows   Zoom: wheel"
-	help_label.add_theme_font_size_override("font_size",14)
+	help_label.text="Tap unit, then tap destination. Drag empty map to pan."
+	help_label.add_theme_font_size_override("font_size",11)
 	v.add_child(help_label)
+
+func toggle_hud()->void:
+	hud_collapsed=not hud_collapsed
+	status_label.visible=not hud_collapsed
+	for child in hud.get_child(0).get_child(0).get_children():
+		if child is HBoxContainer and child!=hud.get_child(0).get_child(0).get_child(0):
+			child.visible=not hud_collapsed
+	help_label.visible=not hud_collapsed
+
+func change_zoom(factor:float)->void:
+	zoom_level=clamp(zoom_level*factor,0.35,2.2)
+	update_view()
 
 func make_panel_style() -> StyleBoxFlat:
 	var s:=StyleBoxFlat.new()
@@ -329,10 +403,10 @@ func make_panel_style() -> StyleBoxFlat:
 	s.border_color=Color(0.55,0.48,0.3,0.9)
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(6)
-	s.content_margin_left=12
-	s.content_margin_right=12
-	s.content_margin_top=8
-	s.content_margin_bottom=8
+	s.content_margin_left=6
+	s.content_margin_right=6
+	s.content_margin_top=4
+	s.content_margin_bottom=4
 	return s
 
 func recruit_soldier() -> void:
@@ -404,7 +478,7 @@ func place_building(pos:Vector2) -> void:
 	if pending_building=="Warehouse": storage_capacity+=1500
 	if pending_building=="Warehouse": storage_points.append(structure)
 	placing_building=false
-	help_label.text="Right-click moves units. Choose building then tap map."
+	help_label.text="Tap units then tap destination. Drag to pan."
 	update_status()
 
 func building_completed(b:Node2D)->void:
