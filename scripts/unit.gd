@@ -18,6 +18,8 @@ var attack_cooldown:=1.0
 var attack_timer:=0.0
 var acquire_timer:=0.0
 var target_path_timer:=0.0
+var pending_path_destination:=Vector2.ZERO
+var path_pending:=false
 var harvest_target_node:Node2D=null
 var resume_harvest_node:Node2D=null
 var harvest_timer:=0.0
@@ -63,9 +65,21 @@ func set_selected(v:bool)->void:
 
 func set_route(to_pos:Vector2)->void:
 	var parent=get_parent()
+	if parent!=null and parent.has_method("request_path"):
+		pending_path_destination=to_pos
+		path_pending=true
+		parent.request_path(self,to_pos)
+	else:
+		route=PackedVector2Array([to_pos])
+		route_index=0
+
+func execute_pending_path()->void:
+	path_pending=false
+	var parent=get_parent()
 	if parent!=null and parent.has_method("find_path"):
-		route=parent.find_path(position,to_pos,self)
-	else:route=PackedVector2Array([to_pos])
+		route=parent.find_path(position,pending_path_destination,self)
+	else:
+		route=PackedVector2Array([pending_path_destination])
 	route_index=0
 
 func move_to(p:Vector2)->void:
@@ -233,6 +247,7 @@ func _process(delta:float)->void:
 		if parent!=null:move_along_route(delta,parent)
 
 func move_along_route(delta:float,parent:Node,target_override:Node=null)->void:
+	if path_pending:return
 	if route.is_empty():set_route(destination)
 	if route.is_empty():return
 	if route_index>=route.size():route_index=route.size()-1
