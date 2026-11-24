@@ -142,10 +142,8 @@ func return_to_storage()->void:
 	route=PackedVector2Array()
 	route_index=0
 	if storage_target!=null:
-		# Aim for an accessible point just outside the storage footprint.
-		var direction=(position-storage_target.position).normalized()
-		if direction.length()<0.1:direction=Vector2(1,0)
-		destination=storage_target.position+direction*52.0
+		# Route directly to the storage center; movement collision exempts this target.
+		destination=storage_target.position
 		set_route(destination)
 	else:
 		moving=false
@@ -222,7 +220,7 @@ func _process(delta:float)->void:
 			moving=true
 			var approach_direction=(position-storage_target.position).normalized()
 			if approach_direction.length()<0.1:approach_direction=Vector2(1,0)
-			destination=storage_target.position+approach_direction*52.0
+			destination=storage_target.position
 			if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 	if harvest_target_node!=null and storage_target==null:
 		if not is_instance_valid(harvest_target_node) or harvest_target_node.amount<=0:
@@ -283,7 +281,7 @@ func _process(delta:float)->void:
 				if is_instance_valid(target) and target.health>0 and target.has_method("attack_target") and target.team!=team:target.attack_target(self)
 	if moving and target==null:
 		var parent=get_parent()
-		if parent!=null:move_along_route(delta,parent)
+		if parent!=null:move_along_route(delta,parent,storage_target)
 
 func move_along_route(delta:float,parent:Node,target_override:Node=null)->void:
 	if path_pending:return
