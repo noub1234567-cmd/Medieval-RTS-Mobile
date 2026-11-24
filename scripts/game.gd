@@ -688,17 +688,29 @@ func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Arr
 	var min_y=max(0,min(start.y,finish.y)-margin)
 	var max_y=min(GRID.y-1,max(start.y,finish.y)+margin)
 	var open:Array[Vector2i]=[start]
+	var closed:Dictionary={}
 	var came_from:Dictionary={}
 	var costs:Dictionary={start:0.0}
 	var scores:Dictionary={start:float(start.distance_to(finish))}
 	var visited=0
-	while not open.is_empty() and visited<350:
+	while not open.is_empty() and visited<140:
+		# Find the lowest score without repeatedly sorting the whole open list.
+		var best_index=0
+		var best_score=float(scores.get(open[0],INF))
+		for oi in range(1,open.size()):
+			var candidate_score=float(scores.get(open[oi],INF))
+			if candidate_score<best_score:
+				best_score=candidate_score
+				best_index=oi
+			var current=open.pop_at(best_index)
+			if closed.has(current):continue
+		closed[current]=true
 		visited+=1
-		var current=open.pop_back()
 		if current==finish:break
 		for delta in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1),Vector2i(1,1),Vector2i(1,-1),Vector2i(-1,1),Vector2i(-1,-1)]:
 			var next=current+delta
 			if next.x<min_x or next.x>max_x or next.y<min_y or next.y>max_y:continue
+			if closed.has(next):continue
 			if next!=finish and is_cell_blocked(next,mover):continue
 			var step=1.0 if abs(delta.x)+abs(delta.y)==1 else 1.4
 			var new_cost=costs[current]+step
@@ -706,9 +718,7 @@ func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Arr
 				came_from[next]=current
 				costs[next]=new_cost
 				scores[next]=new_cost+float(next.distance_to(finish))
-				if not open.has(next):
-					open.append(next)
-					open.sort_custom(func(a,b):return scores.get(a,INF)>scores.get(b,INF))
+				if not open.has(next):open.append(next)
 	if not came_from.has(finish):return PackedVector2Array([end_pos])
 	var cells:Array[Vector2i]=[]
 	var cell=finish
