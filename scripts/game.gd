@@ -511,9 +511,14 @@ func assign_builder_to_site(site:Node2D)->void:
 			if d<nearest:nearest=d;builder=unit
 	if builder!=null:builder.build_target(site)
 
+func player_unit_died(unit:Node2D)->void:
+	if unit!=null and unit.team==0:
+		population=max(0,population-1)
+		update_status()
+
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
-	if b.name=="House":population_cap+=5
+	if b.team==0 and b.name=="House":population_cap+=5
 	if b.name=="Warehouse":
 		storage_capacity+=1500
 		storage_points.append(b)
