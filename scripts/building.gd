@@ -9,6 +9,8 @@ var attack_damage:int=20
 var attack_timer:float=0.0
 var attack_cooldown:float=1.5
 var health_bar:Polygon2D
+var construction_progress:float=0.0
+var is_complete:bool=true
 
 func _ready()->void:
 	health_bar=Polygon2D.new()
@@ -22,8 +24,20 @@ func update_health_bar()->void:
 	health_bar.polygon=PackedVector2Array([Vector2(-18,-2),Vector2(-18+36*ratio,-2),Vector2(-18+36*ratio,2),Vector2(-18,2)])
 	health_bar.color=Color(0.2,0.9,0.25) if ratio>0.5 else Color(1,0.65,0.1) if ratio>0.25 else Color(0.95,0.2,0.15)
 
+func add_build_work(amount:float)->void:
+	if is_complete:return
+	construction_progress=min(100.0,construction_progress+amount)
+	if construction_progress>=100.0:
+		is_complete=true
+		var parent=get_parent()
+		if parent!=null and parent.has_method("building_completed"):
+			parent.building_completed(self)
+	var shape=get_node_or_null("Polygon2D")
+	if shape is Polygon2D:
+		shape.color.a=1.0 if is_complete else 0.55+0.4*(construction_progress/100.0)
+
 func _process(delta:float)->void:
-	if building_type!="Guard Tower" or team!=0: return
+	if not is_complete or building_type!="Guard Tower" or team!=0: return
 	attack_timer=max(0.0,attack_timer-delta)
 	if attack_timer>0.0: return
 	var parent=get_parent()
