@@ -19,7 +19,7 @@ var touch_pending := false
 var hud: CanvasLayer
 var status_label: Label
 var help_label: Label
-var resources := {"wood": 300, "food": 250, "gold": 200}
+var resources := {"wood": 300, "food": 250, "gold": 200, "stone": 0}
 var buildings: Array[Node2D] = []
 var placing_building := false
 var pending_building := ""
