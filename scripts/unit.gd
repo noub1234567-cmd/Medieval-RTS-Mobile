@@ -28,6 +28,7 @@ var carried_type:String=""
 var cargo_capacity:=100
 var storage_target:Node2D=null
 var storage_recheck_timer:=0.0
+var storage_retry_timer:=0.0
 var build_target_site:Node2D=null
 var target:Node2D=null
 var body:Polygon2D
@@ -136,9 +137,10 @@ func resume_after_delivery(resource_type:String,parent:Node)->void:
 func return_to_storage()->void:
 	var parent=get_parent()
 	if parent==null:return
-	storage_target=parent.get_nearest_storage(position)
 	harvest_target_node=null
+	storage_target=parent.get_nearest_storage(position)
 	storage_recheck_timer=0.0
+	storage_retry_timer=1.0
 	moving=storage_target!=null
 	path_pending=false
 	route=PackedVector2Array()
@@ -198,8 +200,11 @@ func update_health_bar()->void:
 	health_bar.color=Color(0.2,0.9,0.25) if ratio>0.5 else Color(1,0.65,0.1) if ratio>0.25 else Color(0.95,0.2,0.15)
 
 func _process(delta:float)->void:
-	# Workers carry full loads to storage and automatically resume the same deposit,
-	# or select the nearest remaining deposit of that resource if it was exhausted.
+	# Retry storage assignment for any full worker whose storage target was lost.
+	if team==0 and carried_amount>=cargo_capacity and storage_target==null:
+		storage_retry_timer-=delta
+		if storage_retry_timer<=0.0:
+			return_to_storage()
 	if storage_target!=null:
 		# Periodically reassess storage options while travelling; switch immediately
 		# if another live storage has become the closest to the worker's current position.
