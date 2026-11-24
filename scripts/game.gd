@@ -95,7 +95,7 @@ func _input(event:InputEvent) -> void:
 				dragging=false
 		elif event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
 			if placing_building: place_building(screen_to_world(event.position))
-			else: move_selected(screen_to_world(event.position))
+			else: attack_or_move(screen_to_world(event.position))
 		elif event.button_index==MOUSE_BUTTON_WHEEL_UP:
 			zoom_level=min(zoom_level*1.1,2.0)
 			update_view()
@@ -160,12 +160,24 @@ func add_selection(u:Node2D) -> void:
 		selected.append(u)
 		u.set_selected(true)
 
-func move_selected(target:Vector2) -> void:
-	if selected.is_empty():
-		return
-	for i in range(selected.size()):
-		var offset:=Vector2((i%3)*20-20,(i/3)*18)
-		selected[i].move_to(target+offset)
+func attack_or_move(target_pos:Vector2) -> void:
+	if selected.is_empty(): return
+	var enemy:Node2D=null
+	var best_distance:=48.0
+	for u in units:
+		if is_instance_valid(u) and u.team==1:
+			var d=u.position.distance_to(target_pos)
+			if d<best_distance:
+				best_distance=d
+				enemy=u
+	if enemy!=null:
+		for soldier in selected: soldier.attack_target(enemy)
+		help_label.text="Attack order issued!"
+	else:
+		for i in range(selected.size()):
+			var offset:=Vector2((i%3)*20-20,(i/3)*18)
+			selected[i].move_to(target_pos+offset)
+		help_label.text="Move order issued."
 
 func update_view() -> void:
 	position=camera_offset
@@ -283,6 +295,8 @@ func update_status() -> void:
 		status_label.text="Wood: %d  Food: %d  Gold: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d" % [resources.wood,resources.food,resources.gold,population,population_cap,selected.size(),enemy_count(),buildings.size()]
 
 func _process(delta:float) -> void:
+	units=units.filter(func(u): return is_instance_valid(u) and u.health>0)
+	selected=selected.filter(func(u): return is_instance_valid(u) and u.health>0)
 	income_timer+=delta
 	if income_timer>=5.0:
 		income_timer=0.0
