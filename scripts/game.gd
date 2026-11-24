@@ -39,8 +39,10 @@ var enemy_attack_active := false
 var enemy_attack_losses := 0
 var tree_positions: Array[Vector2] = []
 var resource_nodes: Array[Node2D] = []
+var storage_points: Array[Node2D] = []
+var storage_capacity := 2000
 const ResourceNodeScript := preload("res://scripts/resource_node.gd")
-var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}, "Guard Tower": {"wood": 120, "gold": 60}, "Wall": {"wood": 25, "gold": 5}}
+var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}, "Guard Tower": {"wood": 120, "gold": 60}, "Wall": {"wood": 25, "gold": 5}, "Warehouse": {"wood": 180, "gold": 70}}
 
 func _ready() -> void:
 	var overlay := OverlayScene.instantiate()
@@ -61,6 +63,7 @@ func _ready() -> void:
 			tile.add_child(outline)
 	add_map_details()
 	create_resource_nodes()
+	create_player_storage()
 	for i in range(8):
 		var u: Node2D = UnitScene.instantiate()
 		add_child(u)
@@ -88,6 +91,46 @@ func add_map_details() -> void:
 		tree.color = Color(0.12,0.32,0.16)
 		tree.z_index = 1
 		add_child(tree)
+
+func create_player_storage() -> void:
+	var depot:=Node2D.new()
+	depot.set_script(BuildingScript)
+	depot.team=0
+	depot.max_health=1000
+	depot.health=1000
+	depot.name="Town Center"
+	depot.building_type="Town Center"
+	depot.position=grid_to_screen(Vector2i(11,11))
+	var shape:=Polygon2D.new()
+	shape.polygon=PackedVector2Array([Vector2(0,-38),Vector2(34,-14),Vector2(34,18),Vector2(0,40),Vector2(-34,18),Vector2(-34,-14)])
+	shape.color=Color(0.68,0.55,0.28)
+	depot.add_child(shape)
+	var label:=Label.new()
+	label.text="Town Center"
+	label.position=Vector2(-40,-54)
+	label.scale=Vector2(0.8,0.8)
+	depot.add_child(label)
+	add_child(depot)
+	buildings.append(depot)
+	storage_points.append(depot)
+
+func get_nearest_storage(pos:Vector2)->Node2D:
+	var nearest:Node2D=null
+	var distance:=INF
+	for depot in storage_points:
+		if is_instance_valid(depot) and depot.health>0:
+			var d=pos.distance_to(depot.position)
+			if d<distance:
+				distance=d
+				nearest=depot
+	return nearest
+
+func deliver_resource(resource_type:String, quantity:int)->int:
+	var room=max(0,storage_capacity-resources.get(resource_type,0))
+	var delivered=min(room,quantity)
+	resources[resource_type]+=delivered
+	update_status()
+	return delivered
 
 func create_resource_nodes() -> void:
 	var deposits:Array[Dictionary]=[
@@ -256,7 +299,7 @@ func create_hud() -> void:
 	recruit.text="Recruit soldier"
 	recruit.pressed.connect(recruit_soldier)
 	buttons.add_child(recruit)
-	for building_name in ["Farm", "House", "Barracks", "Guard Tower", "Wall"]:
+	for building_name in ["Farm", "House", "Barracks", "Guard Tower", "Wall", "Warehouse"]:
 		var b:=Button.new()
 		b.text=building_name
 		b.pressed.connect(func(): begin_placement(building_name))
@@ -334,7 +377,7 @@ func place_building(pos:Vector2) -> void:
 	structure.position=pos
 	var shape:=Polygon2D.new()
 	shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
-	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4),"Guard Tower":Color(0.35,0.55,0.65),"Wall":Color(0.45,0.42,0.38)}[pending_building]
+	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4),"Guard Tower":Color(0.35,0.55,0.65),"Wall":Color(0.45,0.42,0.38),"Warehouse":Color(0.55,0.48,0.32)}[pending_building]
 	structure.add_child(shape)
 	var label:=Label.new()
 	label.text=pending_building
@@ -344,13 +387,15 @@ func place_building(pos:Vector2) -> void:
 	add_child(structure)
 	buildings.append(structure)
 	if pending_building=="House": population_cap+=5
+	if pending_building=="Warehouse": storage_capacity+=1500
+	if pending_building=="Warehouse": storage_points.append(structure)
 	placing_building=false
 	help_label.text="Right-click moves units. Choose building then tap map."
 	update_status()
 
 func update_status() -> void:
 	if status_label:
-		status_label.text="Wood: %d  Food: %d  Gold: %d  Stone: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d  Enemy base: %d" % [resources.wood,resources.food,resources.gold,resources.stone,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size()]
+		status_label.text="Wood: %d  Food: %d  Gold: %d  Stone: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d  Enemy base: %d  Storage: %d" % [resources.wood,resources.food,resources.gold,resources.stone,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size(),storage_capacity]
 
 func _process(delta:float) -> void:
 	if enemy_attack_active:
