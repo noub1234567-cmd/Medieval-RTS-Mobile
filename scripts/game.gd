@@ -702,8 +702,8 @@ func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Arr
 			if candidate_score<best_score:
 				best_score=candidate_score
 				best_index=oi
-			var current=open.pop_at(best_index)
-			if closed.has(current):continue
+		var current=open.pop_at(best_index)
+		if closed.has(current):continue
 		closed[current]=true
 		visited+=1
 		if current==finish:break
