@@ -8,7 +8,7 @@ var speed:=120.0
 var max_health:=100
 var health:=100
 var attack_damage:=15
-var attack_range:=42.0
+var attack_range:=42.0\nvar detection_range:=220.0
 var attack_cooldown:=1.0
 var attack_timer:=0.0
 var target:Node2D=null
@@ -56,7 +56,7 @@ func attack_target(enemy:Node2D)->void:
 	target=enemy
 	moving=false
 
-func take_damage(amount:int)->void:
+func acquire_player_target()->void:\n\tvar parent=get_parent()\n\tif not parent.has_method("enemy_count"): return\n\tvar closest:Node2D=null\n\tvar nearest=detection_range\n\tfor candidate in parent.units:\n\t\tif is_instance_valid(candidate) and candidate.team==0 and candidate.health>0:\n\t\t\tvar distance=position.distance_to(candidate.position)\n\t\t\tif distance<nearest:\n\t\t\t\tnearest=distance\n\t\t\t\tclosest=candidate\n\tif closest!=null: attack_target(closest)\n\nfunc take_damage(amount:int)->void:
 	health=max(0,health-amount)
 	update_health_bar()
 	if health<=0:
