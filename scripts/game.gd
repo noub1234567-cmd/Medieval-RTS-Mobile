@@ -191,6 +191,9 @@ func _input(event:InputEvent) -> void:
 		overlay_update()
 	elif event is InputEventScreenTouch:
 		if event.pressed:
+			if event.position.x<520.0 and event.position.y<180.0:
+				dragging=false
+				return
 			touch_start_screen=event.position
 			drag_start=screen_to_world(event.position)
 			drag_current=drag_start
