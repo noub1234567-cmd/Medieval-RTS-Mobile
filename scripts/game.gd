@@ -18,6 +18,11 @@ var touch_pending := false
 var hud: CanvasLayer
 var status_label: Label
 var help_label: Label
+var resources := {"wood": 300, "food": 250, "gold": 200}
+var buildings: Array[Node2D] = []
+var placing_building := false
+var pending_building := ""
+var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}}
 
 func _ready() -> void:
 	var overlay := OverlayScene.instantiate()
@@ -86,13 +91,17 @@ func _input(event:InputEvent) -> void:
 				finish_selection(screen_to_world(event.position))
 				dragging=false
 		elif event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
-			move_selected(screen_to_world(event.position))
+			if placing_building: place_building(screen_to_world(event.position))
+			else: move_selected(screen_to_world(event.position))
 		elif event.button_index==MOUSE_BUTTON_WHEEL_UP:
 			zoom_level=min(zoom_level*1.1,2.0)
 			update_view()
 		elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN:
 			zoom_level=max(zoom_level/1.1,0.45)
 			update_view()
+	elif event is InputEventKey and event.pressed and event.keycode==KEY_ESCAPE:
+		placing_building=false
+		help_label.text="Placement cancelled"
 	elif event is InputEventMouseMotion and dragging:
 		drag_current=screen_to_world(event.position)
 		overlay_update()
@@ -113,6 +122,10 @@ func overlay_update() -> void:
 	overlay.set_rect(Rect2(drag_start,drag_current-drag_start).abs())
 
 func finish_selection(end_pos:Vector2) -> void:
+	if placing_building:
+		place_building(end_pos)
+		get_node("SelectionOverlay").clear_rect()
+		return
 	var box := Rect2(drag_start,end_pos-drag_start).abs()
 	if box.size.length()<14.0:
 		var nearest:Node2D=null
@@ -170,6 +183,13 @@ func create_hud() -> void:
 	v.add_child(title)
 	status_label=Label.new()
 	v.add_child(status_label)
+	var buttons:=HBoxContainer.new()
+	v.add_child(buttons)
+	for building_name in ["Farm", "House", "Barracks"]:
+		var b:=Button.new()
+		b.text=building_name
+		b.pressed.connect(func(): begin_placement(building_name))
+		buttons.add_child(b)
 	help_label=Label.new()
 	help_label.text="Select: tap / drag     Move: right-click\nCamera: WASD / arrows     Zoom: wheel"
 	help_label.add_theme_font_size_override("font_size",14)
@@ -187,9 +207,46 @@ func make_panel_style() -> StyleBoxFlat:
 	s.content_margin_bottom=8
 	return s
 
+func enemy_count() -> int:
+	var count:=0
+	for u in units:
+		if u.team==1: count+=1
+	return count
+
+func begin_placement(building_name:String) -> void:
+	placing_building=true
+	pending_building=building_name
+	help_label.text="Tap map to place %s (Esc cancels)" % building_name
+
+func place_building(pos:Vector2) -> void:
+	if not placing_building: return
+	var cost:Dictionary=building_cost[pending_building]
+	for key in cost:
+		if resources[key]<cost[key]:
+			help_label.text="Not enough %s" % key
+			placing_building=false
+			return
+	for key in cost: resources[key]-=cost[key]
+	var structure:=Node2D.new()
+	structure.position=pos
+	var shape:=Polygon2D.new()
+	shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
+	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4)}[pending_building]
+	structure.add_child(shape)
+	var label:=Label.new()
+	label.text=pending_building
+	label.position=Vector2(-32,-42)
+	label.scale=Vector2(0.8,0.8)
+	structure.add_child(label)
+	add_child(structure)
+	buildings.append(structure)
+	placing_building=false
+	help_label.text="Right-click moves units. Choose building then tap map."
+	update_status()
+
 func update_status() -> void:
 	if status_label:
-		status_label.text="Selected soldiers: %d / 8\nEnemy units: 4" % selected.size()
+		status_label.text="Wood: %d  Food: %d  Gold: %d\nSelected: %d  Enemies: %d  Buildings: %d" % [resources.wood,resources.food,resources.gold,selected.size(),enemy_count(),buildings.size()]
 
 func _process(delta:float) -> void:
 	var motion:=Vector2.ZERO
