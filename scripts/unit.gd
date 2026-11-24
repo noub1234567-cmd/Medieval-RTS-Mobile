@@ -95,7 +95,16 @@ func _process(delta:float)->void:
 		else:
 			var d=target.position-position
 			if d.length()>attack_range:
-				position+=d.normalized()*min(speed*delta,d.length()-attack_range+2.0)
+				var step=d.normalized()*min(speed*delta,d.length()-attack_range+2.0)
+				var parent=get_parent()
+				var candidate=position+step
+				if not parent.has_method("is_unit_position_blocked") or not parent.is_unit_position_blocked(candidate,self,target):
+					position=candidate
+				else:
+					var slide_x=position+Vector2(step.x,0)
+					var slide_y=position+Vector2(0,step.y)
+					if not parent.is_unit_position_blocked(slide_x,self,target): position=slide_x
+					elif not parent.is_unit_position_blocked(slide_y,self,target): position=slide_y
 			elif attack_timer<=0.0:
 				target.take_damage(attack_damage)
 				attack_timer=attack_cooldown
@@ -107,4 +116,13 @@ func _process(delta:float)->void:
 			position=destination
 			moving=false
 		else:
-			position+=d.normalized()*min(speed*delta,d.length())
+			var step=d.normalized()*min(speed*delta,d.length())
+			var candidate=position+step
+			var parent=get_parent()
+			if not parent.has_method("is_unit_position_blocked") or not parent.is_unit_position_blocked(candidate,self):
+				position=candidate
+			else:
+				var slide_x=position+Vector2(step.x,0)
+				var slide_y=position+Vector2(0,step.y)
+				if not parent.is_unit_position_blocked(slide_x,self): position=slide_x
+				elif not parent.is_unit_position_blocked(slide_y,self): position=slide_y
