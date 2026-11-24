@@ -161,7 +161,7 @@ func _process(delta:float)->void:
 						var next_node=parent.get_nearest_resource_node(position,old_type)
 						if next_node!=null:harvest_target(next_node)
 				else:
-						moving=true
+					moving=true
 					if storage_target!=null:destination=storage_target.position
 		else:
 			moving=true
