@@ -5,6 +5,7 @@ const TILE_W := 64.0
 const TILE_H := 32.0
 const UnitScene := preload("res://scenes/unit.tscn")
 const OverlayScene := preload("res://scenes/selection_overlay.tscn")
+const BuildingScript := preload("res://scripts/building.gd")
 
 var units: Array[Node2D] = []
 var selected: Array[Node2D] = []
@@ -30,6 +31,12 @@ var enemy_buildings: Array[Node2D] = []
 var enemy_population := 4
 var enemy_population_cap := 8
 var enemy_ai_timer := 0.0
+var enemy_attack_timer := 0.0
+var enemy_attack_cooldown := 35.0
+var enemy_attack_level := 0
+var enemy_attack_group: Array[Node2D] = []
+var enemy_attack_active := false
+var enemy_attack_losses := 0
 var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}}
 
 func _ready() -> void:
@@ -62,7 +69,9 @@ func _ready() -> void:
 		e.set_team(1)
 		e.position = grid_to_screen(Vector2i(25+i%2, 25+i/2))
 		units.append(e)
-	create_enemy_base()\n\tcreate_hud()\n\tupdate_view()
+	create_enemy_base()
+	create_hud()
+	update_view()
 	update_status()
 
 func add_map_details() -> void:
@@ -214,7 +223,8 @@ func create_hud() -> void:
 		b.pressed.connect(func(): begin_placement(building_name))
 		buttons.add_child(b)
 	help_label=Label.new()
-	help_label.text="Select: tap / drag   Attack/Move: right-click\nCamera: WASD / arrows   Zoom: wheel"
+	help_label.text="Select: tap / drag   Attack/Move: right-click
+Camera: WASD / arrows   Zoom: wheel"
 	help_label.add_theme_font_size_override("font_size",14)
 	v.add_child(help_label)
 
@@ -276,6 +286,10 @@ func place_building(pos:Vector2) -> void:
 			return
 	for key in cost: resources[key]-=cost[key]
 	var structure:=Node2D.new()
+	structure.set_script(BuildingScript)
+	structure.team=0
+	structure.max_health=300
+	structure.health=300
 	structure.name=pending_building
 	structure.position=pos
 	var shape:=Polygon2D.new()
@@ -296,11 +310,22 @@ func place_building(pos:Vector2) -> void:
 
 func update_status() -> void:
 	if status_label:
-		status_label.text="Wood: %d  Food: %d  Gold: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d  Enemy base: %d" % [resources.wood,resources.food,resources.gold,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size()]
+		status_label.text="Wood: %d  Food: %d  Gold: %d
+Population: %d/%d  Selected: %d  Enemies: %d
+Buildings: %d  Enemy base: %d" % [resources.wood,resources.food,resources.gold,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size()]
 
 func _process(delta:float) -> void:
+	if enemy_attack_active:
+		monitor_enemy_attack()
 	units=units.filter(func(u): return is_instance_valid(u) and u.health>0)
 	selected=selected.filter(func(u): return is_instance_valid(u) and u.health>0)
+	enemy_attack_timer += delta
+	if enemy_attack_timer >= enemy_attack_cooldown:
+		enemy_attack_timer = 0.0
+		enemy_attack_level = min(enemy_attack_level + 1, 5)
+		enemy_attack_cooldown = max(20.0, 42.0 - enemy_attack_level * 4.0)
+		if not enemy_attack_active:
+			begin_enemy_attack()
 	income_timer+=delta
 	if income_timer>=5.0:
 		income_timer=0.0
@@ -325,6 +350,10 @@ func create_enemy_base() -> void:
 
 func create_enemy_building(building_name:String, pos:Vector2) -> void:
 	var structure:=Node2D.new()
+	structure.set_script(BuildingScript)
+	structure.team=1
+	structure.max_health=500 if building_name=="Enemy Town Center" else 300
+	structure.health=structure.max_health
 	structure.name=building_name
 	structure.position=pos
 	var shape:=Polygon2D.new()
@@ -372,3 +401,49 @@ func enemy_has_barracks() -> bool:
 	for b in enemy_buildings:
 		if b.name=="Enemy Barracks": return true
 	return false
+
+func begin_enemy_attack() -> void:
+	var squad:Array[Node2D]=[]
+	for u in units:
+		if is_instance_valid(u) and u.team==1 and u.health>0 and not u.moving and u.target==null:
+			squad.append(u)
+	var required:=min(3+enemy_attack_level,6)
+	if squad.size()<required: return
+	enemy_attack_group=squad
+	enemy_attack_active=true
+	enemy_attack_losses=0
+	# Muster at the enemy barracks before advancing as a group.
+	var muster=grid_to_screen(Vector2i(26,28))
+	for i in range(squad.size()): squad[i].move_to(muster+Vector2((i%3)*22,(i/3)*20))
+	await get_tree().create_timer(3.0).timeout
+	if not is_inside_tree() or not enemy_attack_active: return
+	var target_structure:Node2D=null
+	for b in buildings:
+		if is_instance_valid(b) and b.health>0:
+			if target_structure==null or b.name=="Barracks": target_structure=b
+	if target_structure!=null:
+		for soldier in enemy_attack_group:
+			if is_instance_valid(soldier) and soldier.health>0: soldier.attack_target(target_structure)
+	else:
+		var fallback=grid_to_screen(Vector2i(12,12))
+		for i in range(enemy_attack_group.size()):
+			var soldier=enemy_attack_group[i]
+			if is_instance_valid(soldier) and soldier.health>0: soldier.move_to(fallback+Vector2((i%3)*24,(i/3)*24))
+
+func monitor_enemy_attack() -> void:
+	var living:=0
+	for soldier in enemy_attack_group:
+		if is_instance_valid(soldier) and soldier.health>0: living+=1
+	var initial=enemy_attack_group.size()
+	if initial>0 and living<=initial/2:
+		# Retreat the surviving attack force to its base.
+		var retreat=grid_to_screen(Vector2i(26,28))
+		for i in range(enemy_attack_group.size()):
+			var soldier=enemy_attack_group[i]
+			if is_instance_valid(soldier) and soldier.health>0: soldier.move_to(retreat+Vector2((i%3)*20,(i/3)*20))
+		enemy_attack_active=false
+		enemy_attack_group.clear()
+		return
+	if living==0:
+		enemy_attack_active=false
+		enemy_attack_group.clear()
