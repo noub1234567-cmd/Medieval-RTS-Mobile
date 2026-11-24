@@ -248,6 +248,6 @@ func move_along_route(delta:float,parent:Node,target_override:Node=null)->void:
 		stuck_timer=0.0
 	else:
 		stuck_timer+=delta
-		if stuck_timer>=0.35:
+		if stuck_timer>=1.0:
 			set_route(destination)
 			stuck_timer=0.0
