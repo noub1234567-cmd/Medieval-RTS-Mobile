@@ -37,7 +37,7 @@ var enemy_attack_level := 0
 var enemy_attack_group: Array[Node2D] = []
 var enemy_attack_active := false
 var enemy_attack_losses := 0
-var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}}
+var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}, "Guard Tower": {"wood": 120, "gold": 60}, "Wall": {"wood": 25, "gold": 5}}
 
 func _ready() -> void:
 	var overlay := OverlayScene.instantiate()
