@@ -32,6 +32,7 @@ var target:Node2D=null
 var body:Polygon2D
 var ring:Line2D
 var health_bar:Polygon2D
+var death_notified:=false
 
 func _ready()->void:
 	destination=position
@@ -173,9 +174,15 @@ func acquire_player_target()->void:
 	if closest!=null:attack_target(closest)
 
 func take_damage(amount:int)->void:
+	if health<=0:return
 	health=max(0,health-amount)
 	update_health_bar()
-	if health<=0:queue_free()
+	if health<=0 and not death_notified:
+		death_notified=true
+		var parent=get_parent()
+		if team==0 and parent!=null and parent.has_method("player_unit_died"):
+			parent.player_unit_died(self)
+		queue_free()
 
 func update_health_bar()->void:
 	if not is_instance_valid(health_bar):return
