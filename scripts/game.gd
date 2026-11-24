@@ -688,8 +688,8 @@ func is_cell_blocked(cell:Vector2i,mover:Node2D)->bool:
 		if is_instance_valid(b) and b.health>0 and p.distance_to(b.position)<42.0:return true
 	for t in tree_positions:
 		if p.distance_to(t)<30.0:return true
-	for other in units:
-		if is_instance_valid(other) and other!=mover and other.health>0 and p.distance_to(other.position)<22.0:return true
+	# Units are dynamic: do not bake their temporary positions into A* paths.
+	# Soft separation and local steering are handled during movement instead.
 	return false
 
 func find_path(start_pos:Vector2,end_pos:Vector2,mover:Node2D)->PackedVector2Array:
