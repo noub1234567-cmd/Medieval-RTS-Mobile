@@ -10,35 +10,56 @@ permissions:
   pages: write
   id-token: write
 
+# Queue deployments instead of cancelling builds that are still running.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   export:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Godot 4.3 and Web export templates
+
+      # Cache Godot executable and export templates.
+      - name: Cache Godot and export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot-cache
+            ~/.local/share/godot/export_templates/4.3.stable
+          key: godot-4.3-${{ runner.os }}-web-templates-v1
+
+      - name: Install Godot 4.3 and Web export templates (cache-aware)
         run: |
           set -eux
-          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -O godot.zip
-          unzip -q godot.zip
-          sudo mv Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
-          sudo chmod +x /usr/local/bin/godot
-          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz -O templates.tpz
-          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
-          unzip -q templates.tpz -d templates
-          cp -r templates/templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          mkdir -p ~/godot-cache ~/.local/share/godot/export_templates/4.3.stable
+          if [ ! -x ~/godot-cache/godot ]; then
+            wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip -O godot.zip
+            unzip -q godot.zip
+            mv Godot_v4.3-stable_linux.x86_64 ~/godot-cache/godot
+            chmod +x ~/godot-cache/godot
+          fi
+          if [ ! -f ~/.local/share/godot/export_templates/4.3.stable/web_release.zip ]; then
+            wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz -O templates.tpz
+            mkdir -p templates
+            unzip -q templates.tpz -d templates
+            cp -r templates/templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          fi
+          echo "$HOME/godot-cache" >> "$GITHUB_PATH"
+
       - name: Validate project and import resources
         run: godot --headless --editor --path . --quit
+
       - name: Export Web
         run: mkdir -p build/web && godot --headless --path . --export-release "Web" build/web/index.html
+
       - name: Upload Web artifact
         uses: actions/upload-artifact@v4
         with:
           name: medieval-rts-web
           path: build/web
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
