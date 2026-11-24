@@ -23,6 +23,7 @@ var resources := {"wood": 300, "food": 250, "gold": 200, "stone": 0}
 var buildings: Array[Node2D] = []
 var placing_building := false
 var pending_building := ""
+var construction_sites: Array[Node2D] = []
 var population := 8
 var population_cap := 8
 var income_timer := 0.0
@@ -250,6 +251,18 @@ func attack_or_move(target_pos:Vector2) -> void:
 		for worker in selected: worker.harvest_target(resource_node)
 		help_label.text="Harvest order issued!"
 		return
+	var site:Node2D=null
+	var site_distance:=55.0
+	for b in construction_sites:
+		if is_instance_valid(b) and not b.is_complete:
+			var sd=b.position.distance_to(target_pos)
+			if sd<site_distance:
+				site_distance=sd
+				site=b
+	if site!=null:
+		for worker in selected: worker.build_target(site)
+		help_label.text="Builders assigned!"
+		return
 	var enemy:Node2D=null
 	var best_distance:=55.0
 	for u in units:
@@ -373,6 +386,7 @@ func place_building(pos:Vector2) -> void:
 	structure.max_health=500 if pending_building=="Guard Tower" else 200 if pending_building=="Wall" else 300
 	structure.health=structure.max_health
 	structure.building_type=pending_building
+	structure.is_complete=false
 	structure.name=pending_building
 	structure.position=pos
 	var shape:=Polygon2D.new()
@@ -391,6 +405,12 @@ func place_building(pos:Vector2) -> void:
 	if pending_building=="Warehouse": storage_points.append(structure)
 	placing_building=false
 	help_label.text="Right-click moves units. Choose building then tap map."
+	update_status()
+
+func building_completed(b:Node2D)->void:
+	construction_sites.erase(b)
+	if b.name=="House":population_cap+=5
+	if b.name=="Warehouse":storage_capacity+=1500;storage_points.append(b)
 	update_status()
 
 func update_status() -> void:
@@ -419,8 +439,8 @@ func _process(delta:float) -> void:
 	if income_timer>=5.0:
 		income_timer=0.0
 		for b in buildings:
-			if b.name=="Farm": resources.food+=10
-			elif b.name=="House": resources.gold+=3
+			if b.is_complete and b.name=="Farm": resources.food+=10
+			elif b.is_complete and b.name=="House": resources.gold+=3
 		update_status()
 	var motion:=Vector2.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): motion.x+=1
