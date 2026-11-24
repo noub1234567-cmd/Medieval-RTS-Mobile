@@ -179,7 +179,7 @@ func _process(delta:float)->void:
 		if not is_instance_valid(storage_target) or storage_target.health<=0:
 			storage_target=null
 			moving=false
-		elif position.distance_to(storage_target.position)<=38.0:
+		elif position.distance_to(storage_target.position)<=58.0:
 			moving=false
 			var parent=get_parent()
 			if parent!=null and carried_amount>0:
@@ -197,6 +197,7 @@ func _process(delta:float)->void:
 		else:
 			moving=true
 			destination=storage_target.position
+			if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 	if harvest_target_node!=null and storage_target==null:
 		if not is_instance_valid(harvest_target_node) or harvest_target_node.amount<=0:
 			var exhausted_type=carried_type if carried_type!="" else harvest_target_node.resource_type if is_instance_valid(harvest_target_node) else ""
