@@ -7,7 +7,8 @@ var building_type:String=""
 var attack_range:float=230.0
 var attack_damage:int=20
 var attack_timer:float=0.0
-var attack_cooldown:float=1.5\nvar health_bar:Polygon2D
+var attack_cooldown:float=1.5
+var health_bar:Polygon2D
 
 func _ready()->void:
 	health_bar=Polygon2D.new()
