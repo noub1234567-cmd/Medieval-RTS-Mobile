@@ -461,3 +461,14 @@ func monitor_enemy_attack() -> void:
 	if living==0:
 		enemy_attack_active=false
 		enemy_attack_group.clear()
+
+func is_unit_position_blocked(pos:Vector2, mover:Node2D, attack_target:Node2D=null) -> bool:
+	# Buildings block movement; the active target is exempt so units can approach it.
+	for structure in buildings + enemy_buildings:
+		if is_instance_valid(structure) and structure!=attack_target and structure.health>0 and pos.distance_to(structure.position)<34.0:
+			return true
+	# Keep soldiers from stacking on top of one another.
+	for other in units:
+		if is_instance_valid(other) and other!=mover and other.health>0 and pos.distance_to(other.position)<18.0:
+			return true
+	return false
