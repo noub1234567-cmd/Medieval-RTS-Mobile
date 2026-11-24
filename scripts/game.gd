@@ -521,9 +521,10 @@ func player_unit_died(unit:Node2D)->void:
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
 
-	if b.name=="Warehouse":
+	if b.team==0 and b.building_type=="Warehouse":
 		storage_capacity+=1500
-		storage_points.append(b)
+		if not storage_points.has(b):
+			storage_points.append(b)
 	update_status()
 
 func update_status() -> void:
