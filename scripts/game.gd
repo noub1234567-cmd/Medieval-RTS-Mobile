@@ -25,6 +25,11 @@ var pending_building := ""
 var population := 8
 var population_cap := 8
 var income_timer := 0.0
+var enemy_resources := {"wood": 240, "food": 220, "gold": 180}
+var enemy_buildings: Array[Node2D] = []
+var enemy_population := 4
+var enemy_population_cap := 8
+var enemy_ai_timer := 0.0
 var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}}
 
 func _ready() -> void:
@@ -57,8 +62,7 @@ func _ready() -> void:
 		e.set_team(1)
 		e.position = grid_to_screen(Vector2i(25+i%2, 25+i/2))
 		units.append(e)
-	create_hud()
-	update_view()
+	create_enemy_base()\n\tcreate_hud()\n\tupdate_view()
 	update_status()
 
 func add_map_details() -> void:
@@ -312,3 +316,59 @@ func _process(delta:float) -> void:
 	if motion!=Vector2.ZERO:
 		camera_offset+=motion.normalized()*520.0*delta
 		update_view()
+
+func create_enemy_base() -> void:
+	# Visible enemy settlement on the opposite side of the map.
+	create_enemy_building("Enemy Town Center", grid_to_screen(Vector2i(28, 28)))
+	create_enemy_building("Enemy Barracks", grid_to_screen(Vector2i(26, 28)))
+	create_enemy_building("Enemy Farm", grid_to_screen(Vector2i(28, 30)))
+
+func create_enemy_building(building_name:String, pos:Vector2) -> void:
+	var structure:=Node2D.new()
+	structure.name=building_name
+	structure.position=pos
+	var shape:=Polygon2D.new()
+	shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
+	shape.color=Color(0.72,0.24,0.18)
+	structure.add_child(shape)
+	var label:=Label.new()
+	label.text=building_name
+	label.position=Vector2(-42,-44)
+	label.scale=Vector2(0.7,0.7)
+	structure.add_child(label)
+	add_child(structure)
+	enemy_buildings.append(structure)
+
+func enemy_ai_step() -> void:
+	# Basic resource gathering, expansion, and periodic recruitment.
+	enemy_resources.food+=18
+	enemy_resources.gold+=8
+	enemy_resources.wood+=12
+	if enemy_buildings.size()<5 and enemy_resources.wood>=100 and enemy_resources.gold>=40:
+		enemy_resources.wood-=100
+		enemy_resources.gold-=40
+		create_enemy_building("Enemy Farm", grid_to_screen(Vector2i(27+enemy_buildings.size()%3,30+enemy_buildings.size()/3)))
+	if enemy_population_cap<14 and enemy_resources.wood>=100 and enemy_resources.gold>=50:
+		enemy_resources.wood-=100
+		enemy_resources.gold-=50
+		enemy_population_cap+=4
+		create_enemy_building("Enemy House",grid_to_screen(Vector2i(30,26+enemy_buildings.size()%4)))
+	if enemy_population<enemy_population_cap and enemy_resources.food>=45 and enemy_resources.gold>=20 and enemy_has_barracks():
+		enemy_resources.food-=45
+		enemy_resources.gold-=20
+		enemy_population+=1
+		var soldier:Node2D=UnitScene.instantiate()
+		add_child(soldier)
+		soldier.set_team(1)
+		soldier.position=grid_to_screen(Vector2i(25,27))+Vector2(20*enemy_population%60,16)
+		units.append(soldier)
+		if enemy_population>=10 and enemy_buildings.size()<7 and enemy_resources.wood>=150 and enemy_resources.gold>=70:
+			enemy_resources.wood-=150
+			enemy_resources.gold-=70
+			create_enemy_building("Enemy Barracks",grid_to_screen(Vector2i(30,29)))
+	update_status()
+
+func enemy_has_barracks() -> bool:
+	for b in enemy_buildings:
+		if b.name=="Enemy Barracks": return true
+	return false
