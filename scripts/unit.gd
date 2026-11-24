@@ -142,7 +142,7 @@ func update_health_bar()->void:
 func _process(delta:float)->void:
 	# Workers carry full loads to storage and automatically resume the same deposit,
 	# or select the nearest remaining deposit of that resource if it was exhausted.
-\tif storage_target!=null:
+	if storage_target!=null:
 		if not is_instance_valid(storage_target) or storage_target.health<=0:
 			storage_target=null
 			moving=false
