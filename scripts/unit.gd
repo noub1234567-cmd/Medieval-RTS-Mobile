@@ -8,9 +8,11 @@ var speed:=120.0
 var max_health:=100
 var health:=100
 var attack_damage:=15
-var attack_range:=42.0\nvar detection_range:=220.0
+var attack_range:=42.0
+var detection_range:=220.0
 var attack_cooldown:=1.0
 var attack_timer:=0.0
+var acquire_timer:=0.0
 var target:Node2D=null
 var body:Polygon2D
 var ring:Line2D
@@ -56,7 +58,20 @@ func attack_target(enemy:Node2D)->void:
 	target=enemy
 	moving=false
 
-func acquire_player_target()->void:\n\tvar parent=get_parent()\n\tif not parent.has_method("enemy_count"): return\n\tvar closest:Node2D=null\n\tvar nearest=detection_range\n\tfor candidate in parent.units:\n\t\tif is_instance_valid(candidate) and candidate.team==0 and candidate.health>0:\n\t\t\tvar distance=position.distance_to(candidate.position)\n\t\t\tif distance<nearest:\n\t\t\t\tnearest=distance\n\t\t\t\tclosest=candidate\n\tif closest!=null: attack_target(closest)\n\nfunc take_damage(amount:int)->void:
+func acquire_player_target()->void:
+	var parent=get_parent()
+	if not parent.has_method("enemy_count"): return
+	var closest:Node2D=null
+	var nearest=detection_range
+	for candidate in parent.units:
+	\tif is_instance_valid(candidate) and candidate.team==0 and candidate.health>0:
+	\t\tvar distance=position.distance_to(candidate.position)
+	\t\tif distance<nearest:
+	\t\t\tnearest=distance
+	\t\t\tclosest=candidate
+	if closest!=null: attack_target(closest)
+
+func take_damage(amount:int)->void:
 	health=max(0,health-amount)
 	update_health_bar()
 	if health<=0:
@@ -70,6 +85,10 @@ func update_health_bar()->void:
 
 func _process(delta:float)->void:
 	attack_timer=max(0.0,attack_timer-delta)
+	acquire_timer-=delta
+	if team==1 and target==null and acquire_timer<=0.0:
+		acquire_timer=1.5
+		acquire_player_target()
 	if target!=null:
 		if not is_instance_valid(target) or target.health<=0:
 			target=null
@@ -80,7 +99,7 @@ func _process(delta:float)->void:
 			elif attack_timer<=0.0:
 				target.take_damage(attack_damage)
 				attack_timer=attack_cooldown
-				if target!=null and is_instance_valid(target) and target.health>0:
+				if target!=null and is_instance_valid(target) and target.health>0 and target is Node2D and target.has_method("attack_target") and target.team!=team:
 					target.attack_target(self)
 	if moving and target==null:
 		var d=destination-position
