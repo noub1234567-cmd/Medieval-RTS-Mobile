@@ -17,6 +17,7 @@ var detection_range:=220.0
 var attack_cooldown:=1.0
 var attack_timer:=0.0
 var acquire_timer:=0.0
+var target_path_timer:=0.0
 var harvest_target_node:Node2D=null
 var resume_harvest_node:Node2D=null
 var harvest_timer:=0.0
@@ -115,6 +116,7 @@ func attack_target(enemy:Node2D)->void:
 	build_target_site=null
 	if enemy==null or not is_instance_valid(enemy):return
 	target=enemy
+	target_path_timer=0.0
 	moving=false
 
 func acquire_player_target()->void:
@@ -216,7 +218,11 @@ func _process(delta:float)->void:
 			var d=target.position-position
 			if d.length()>attack_range:
 				var parent=get_parent()
-				if route.is_empty() or route[route.size()-1].distance_to(target.position)>8.0:set_route(target.position)
+				target_path_timer-=delta
+				if route.is_empty() or target_path_timer<=0.0:
+					destination=target.position
+					set_route(destination)
+					target_path_timer=1.25
 				move_along_route(delta,parent,target)
 			elif attack_timer<=0.0:
 				target.take_damage(attack_damage)
