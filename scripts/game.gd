@@ -123,18 +123,19 @@ func create_player_storage() -> void:
 
 func get_nearest_storage(pos:Vector2)->Node2D:
 	var nearest:Node2D=null
-	var best_distance_squared:=INF
-	# Evaluate every live, completed player storage using straight-line world distance.
+	var best_distance:=INF
 	for building in buildings:
 		if not is_instance_valid(building) or building.health<=0 or building.team!=0:
 			continue
-		if building.building_type!="Town Center" and building.building_type!="Warehouse":
+		if building.building_type=="Town Center":
+			pass
+		elif building.building_type=="Warehouse" and building.is_complete:
+			pass
+		else:
 			continue
-		if building.building_type=="Warehouse" and not building.is_complete:
-			continue
-		var distance_squared:=pos.distance_squared_to(building.position)
-		if distance_squared<best_distance_squared:
-			best_distance_squared=distance_squared
+		var distance:=pos.distance_to(building.position)
+		if distance<best_distance:
+			best_distance=distance
 			nearest=building
 	return nearest
 
