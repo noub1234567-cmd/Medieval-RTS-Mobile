@@ -11,6 +11,7 @@ var attack_damage:int=20
 var attack_timer:float=0.0
 var attack_cooldown:float=1.5
 var health_bar:Polygon2D
+var range_indicator:Line2D
 var construction_progress:float=0.0
 var is_complete:bool=true
 var construction_bar_bg:Polygon2D
@@ -18,6 +19,8 @@ var construction_bar_fill:Polygon2D
 var construction_label:Label
 
 func _ready()->void:
+	if building_type=="Guard Tower" and team==0:
+		create_range_indicator()
 	health_bar=Polygon2D.new()
 	health_bar.position=Vector2(0,-36)
 	add_child(health_bar)
@@ -25,6 +28,25 @@ func _ready()->void:
 	if not is_complete:
 		create_construction_display()
 		update_construction_display()
+
+func create_range_indicator()->void:
+	range_indicator=Line2D.new()
+	range_indicator.name="TowerRangeIndicator"
+	range_indicator.width=2.0
+	range_indicator.default_color=Color(0.25,0.85,1.0,0.65)
+	range_indicator.closed=true
+	var points:=PackedVector2Array()
+	for i in range(97):
+		var angle=TAU*float(i)/96.0
+		points.append(Vector2(cos(angle),sin(angle))*attack_range)
+	range_indicator.points=points
+	range_indicator.visible=false
+	range_indicator.z_index=-1
+	add_child(range_indicator)
+
+func set_range_visible(value:bool)->void:
+	if is_instance_valid(range_indicator):
+		range_indicator.visible=value
 
 func create_construction_display()->void:
 	construction_label=Label.new()
