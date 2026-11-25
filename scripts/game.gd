@@ -52,6 +52,7 @@ var enemy_enabled := true
 var enemy_toggle_button: Button
 var cancel_build_button: Button
 var demolish_building_button: Button
+var upgrade_town_center_button: Button
 var pause_toggle_button: Button
 var game_paused := false
 var enemy_attack_losses := 0
@@ -118,6 +119,7 @@ func create_player_storage() -> void:
 	depot.health=1000
 	depot.name="Town Center"
 	depot.building_type="Town Center"
+	depot.town_center_level=1
 	depot.position=grid_to_screen(Vector2i(11,11))
 	var shape:=Polygon2D.new()
 	shape.polygon=PackedVector2Array([Vector2(0,-38),Vector2(34,-14),Vector2(34,18),Vector2(0,40),Vector2(-34,18),Vector2(-34,-14)])
@@ -273,6 +275,12 @@ func find_player_unit_at(pos:Vector2)->Node2D:
 				nearest=unit
 	return nearest
 
+func find_town_center_at(pos:Vector2)->Node2D:
+	for building in buildings:
+		if is_instance_valid(building) and building.team==0 and building.building_type=="Town Center" and building.health>0 and pos.distance_to(building.position)<90.0:
+			return building
+	return null
+
 func find_player_building_at(pos:Vector2)->Node2D:
 	var nearest:Node2D=null
 	var best_distance:=58.0
@@ -306,6 +314,14 @@ func touch_tap(pos:Vector2)->void:
 		if is_instance_valid(cancel_build_button):cancel_build_button.visible=true
 		if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
 		help_label.text="Construction selected — cancel to recover 60% of cost"
+		return
+	var town_center=find_town_center_at(pos)
+	if town_center!=null:
+		clear_selection()
+		selected_building=town_center
+		if is_instance_valid(upgrade_town_center_button): upgrade_town_center_button.visible=true
+		if is_instance_valid(demolish_building_button): demolish_building_button.visible=false
+		help_label.text="Town Center selected — upgrade to Level 2"
 		return
 	var structure=find_player_building_at(pos)
 	if structure!=null:
@@ -355,6 +371,7 @@ func clear_selection() -> void:
 	selected_building=null
 	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 	if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
+	if is_instance_valid(upgrade_town_center_button):upgrade_town_center_button.visible=false
 
 func add_selection(u:Node2D) -> void:
 	if not selected.has(u):
@@ -491,6 +508,14 @@ func create_hud() -> void:
 	demolish_building_button.z_index=100
 	demolish_building_button.pressed.connect(demolish_selected_building)
 	hud.add_child(demolish_building_button)
+	upgrade_town_center_button=Button.new()
+	upgrade_town_center_button.text="Upgrade Town Center (L2)"
+	upgrade_town_center_button.custom_minimum_size=Vector2(220,44)
+	upgrade_town_center_button.position=Vector2(8,154)
+	upgrade_town_center_button.visible=false
+	upgrade_town_center_button.z_index=100
+	upgrade_town_center_button.pressed.connect(upgrade_selected_town_center)
+	hud.add_child(upgrade_town_center_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
@@ -769,6 +794,7 @@ func demolish_selected_building()->void:
 	selected_building=null
 	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 	if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
+	if is_instance_valid(upgrade_town_center_button):upgrade_town_center_button.visible=false
 	help_label.text="Building demolished — 15% of resources refunded"
 	update_status()
 
@@ -785,6 +811,33 @@ func player_unit_died(unit:Node2D)->void:
 	if unit!=null and unit.team==0:
 		population=max(0,population-1)
 		update_status()
+
+func upgrade_selected_town_center()->void:
+	var tc=selected_building
+	if not is_instance_valid(tc) or tc.building_type!="Town Center" or tc.town_center_level>=2:
+		help_label.text="Select Town Center — maximum level reached or invalid"
+		return
+	var cost={"wood":200,"gold":150,"stone":100}
+	for key in cost:
+		if resources.get(key,0)<cost[key]:
+			help_label.text="Town Center upgrade requires 200 wood, 150 gold and 100 stone"
+			return
+	for key in cost:resources[key]-=cost[key]
+	var builder:Node2D=null
+	var nearest=INF
+	for worker in units:
+		if is_instance_valid(worker) and worker.team==0 and worker.health>0 and worker.upgrade_target==null and worker.build_target_site==null and worker.harvest_target_node==null and worker.storage_target==null:
+			var d=worker.position.distance_to(tc.position)
+			if d<nearest:nearest=d;builder=worker
+	if builder==null:
+		for key in cost:resources[key]+=cost[key]
+		help_label.text="No available worker to upgrade Town Center"
+		return
+	tc.begin_upgrade()
+	builder.upgrade_target(tc)
+	if is_instance_valid(upgrade_town_center_button):upgrade_town_center_button.visible=false
+	help_label.text="Town Center upgrade started — Level 2"
+	update_status()
 
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
