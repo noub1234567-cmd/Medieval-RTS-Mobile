@@ -50,6 +50,7 @@ var enemy_attack_group: Array[Node2D] = []
 var enemy_attack_active := false
 var enemy_enabled := true
 var enemy_toggle_button: Button
+var cancel_build_button: Button
 var pause_toggle_button: Button
 var game_paused := false
 var enemy_attack_losses := 0
@@ -291,10 +292,18 @@ func touch_tap(pos:Vector2)->void:
 		clear_selection()
 		add_selection(unit)
 		return
+	var site=find_unfinished_building_at(pos)
+	if site!=null:
+		clear_selection()
+		selected_building=site
+		if is_instance_valid(cancel_build_button):cancel_build_button.visible=true
+		help_label.text="Construction selected — cancel to recover 60% of cost"
+		return
 	var tower=find_player_building_at(pos)
 	if tower!=null:
 		clear_selection()
 		selected_building=tower
+		if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 		tower.set_range_visible(true)
 		help_label.text="Guard Tower selected — range: %d" % int(tower.attack_range)
 		return
@@ -330,6 +339,7 @@ func clear_selection() -> void:
 	if is_instance_valid(selected_building):
 		selected_building.set_range_visible(false)
 	selected_building=null
+	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 
 func add_selection(u:Node2D) -> void:
 	if not selected.has(u):
@@ -450,6 +460,12 @@ func create_hud() -> void:
 	enemy_toggle_button.custom_minimum_size=Vector2(110,32)
 	enemy_toggle_button.pressed.connect(toggle_enemy)
 	enemy_row.add_child(enemy_toggle_button)
+	cancel_build_button=Button.new()
+	cancel_build_button.text="Cancel Build (60%)"
+	cancel_build_button.custom_minimum_size=Vector2(130,32)
+	cancel_build_button.visible=false
+	cancel_build_button.pressed.connect(cancel_selected_construction)
+	enemy_row.add_child(cancel_build_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
@@ -665,6 +681,46 @@ func place_building(pos:Vector2) -> void:
 	placing_building=false
 	if is_instance_valid(building_ghost): building_ghost.queue_free(); building_ghost=null
 	help_label.text="Tap units then tap destination. Drag to pan."
+	update_status()
+
+
+func find_unfinished_building_at(pos:Vector2)->Node2D:
+	var nearest:Node2D=null
+	var best_distance:=58.0
+	for site in construction_sites:
+		if is_instance_valid(site) and site.team==0 and not site.is_complete:
+			var distance=site.position.distance_to(pos)
+			if distance<best_distance:
+				best_distance=distance
+				nearest=site
+	return nearest
+
+func cancel_selected_construction()->void:
+	var site=selected_building
+	if not is_instance_valid(site) or site.is_complete or not construction_sites.has(site):
+		help_label.text="Select an unfinished building first"
+		return
+	var cost:Dictionary=building_cost.get(site.building_type,{})
+	for key in cost:
+		resources[key]+=int(floor(float(cost[key])*0.6))
+	# Release any builder assigned to this site and stop its movement/work state.
+	for unit in units:
+		if is_instance_valid(unit) and unit.build_target_site==site:
+			unit.build_target_site=null
+			unit.moving=false
+			unit.path_pending=false
+			unit.route=PackedVector2Array()
+			unit.route_index=0
+			unit.destination=unit.position
+	if site.building_type=="House":
+		population_cap=max(8,population_cap-5)
+	construction_sites.erase(site)
+	buildings.erase(site)
+	storage_points.erase(site)
+	if is_instance_valid(site):site.queue_free()
+	selected_building=null
+	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
+	help_label.text="Construction cancelled — 60% of resources refunded"
 	update_status()
 
 func assign_builder_to_site(site:Node2D)->void:
