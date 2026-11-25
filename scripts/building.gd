@@ -25,6 +25,7 @@ var upgrade_progress:float=0.0
 var upgrade_label:Label
 var upgrade_bar_bg:Polygon2D
 var upgrade_bar_fill:Polygon2D
+var upgrade_workers:Array[Node2D]=[]
 
 func _ready()->void:
 	if building_type=="Guard Tower" and team==0:
@@ -131,6 +132,32 @@ func begin_upgrade()->void:
 	upgrade_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(0,-2),Vector2(0,3),Vector2(0,3)])
 	add_child(upgrade_bar_fill)
 
+func get_upgrade_worker_count()->int:
+	var valid_workers:Array[Node2D]=[]
+	for worker in upgrade_workers:
+		if is_instance_valid(worker) and worker.health>0 and worker.upgrade_target_building==self:
+			valid_workers.append(worker)
+	upgrade_workers=valid_workers
+	return upgrade_workers.size()
+
+func get_upgrade_speed_multiplier()->float:
+	return 1.0+float(min(max(get_upgrade_worker_count()-1,0),7))*0.1
+
+func register_upgrade_worker(worker:Node2D)->bool:
+	if not is_instance_valid(worker) or get_upgrade_worker_count()>=8:return false
+	if not upgrade_workers.has(worker):
+		upgrade_workers.append(worker)
+	update_upgrade_display()
+	return true
+
+func unregister_upgrade_worker(worker:Node2D)->void:
+	upgrade_workers.erase(worker)
+	update_upgrade_display()
+
+func update_upgrade_display()->void:
+	if is_instance_valid(upgrade_label) and is_upgrading:
+		upgrade_label.text="Upgrading %d%% | Workers %d/8" % [int(upgrade_progress),get_upgrade_worker_count()]
+
 func add_upgrade_work(amount:float)->void:
 	if not is_upgrading:return
 	if building_type!="Town Center":
@@ -139,7 +166,7 @@ func add_upgrade_work(amount:float)->void:
 	upgrade_progress=min(100.0,upgrade_progress+amount)
 	var width=48.0*upgrade_progress/100.0
 	upgrade_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(width,-2),Vector2(width,3),Vector2(0,3)])
-	upgrade_label.text="Upgrading %d%%" % int(upgrade_progress)
+	update_upgrade_display()
 	if upgrade_progress>=100.0:
 		is_upgrading=false
 		town_center_level=2
@@ -180,7 +207,7 @@ func add_building_upgrade_work(amount:float)->void:
 	upgrade_progress=min(100.0,upgrade_progress+amount)
 	var width=48.0*upgrade_progress/100.0
 	upgrade_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(width,-2),Vector2(width,3),Vector2(0,3)])
-	if is_instance_valid(upgrade_label):upgrade_label.text="Upgrading %d%%" % int(upgrade_progress)
+	update_upgrade_display()
 	if upgrade_progress>=100.0:
 		is_upgrading=false
 		building_upgrade_level=2
