@@ -30,6 +30,7 @@ var storage_target:Node2D=null
 var storage_recheck_timer:=0.0
 var storage_retry_timer:=0.0
 var build_target_site:Node2D=null
+var upgrade_target_building:Node2D=null
 var target:Node2D=null
 var body:Polygon2D
 var ring:Line2D
@@ -171,6 +172,18 @@ func build_target(site:Node2D)->void:
 	destination=get_building_approach_point(site)
 	set_route(destination)
 
+func upgrade_target(site:Node2D)->void:
+	if team!=0 or site==null or not is_instance_valid(site) or not site.is_upgrading:return
+	target=null
+	harvest_target_node=null
+	storage_target=null
+	build_target_site=null
+	upgrade_target_building=site
+	resume_harvest_node=null
+	moving=true
+	destination=get_building_approach_point(site)
+	set_route(destination)
+
 func attack_target(enemy:Node2D)->void:
 	harvest_target_node=null
 	storage_target=null
@@ -277,6 +290,19 @@ func _process(delta:float)->void:
 					carried_amount+=amount
 					carried_type=harvest_target_node.resource_type
 					if carried_amount>=cargo_capacity or harvest_target_node.amount<=0:return_to_storage()
+	if upgrade_target_building!=null:
+		if not is_instance_valid(upgrade_target_building) or not upgrade_target_building.is_upgrading:
+			upgrade_target_building=null
+			moving=false
+		elif position.distance_to(upgrade_target_building.position)<=58.0:
+			moving=false
+			path_pending=false
+			route=PackedVector2Array()
+			upgrade_target_building.add_upgrade_work(delta*8.0)
+		else:
+			moving=true
+			destination=get_building_approach_point(upgrade_target_building)
+			if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 	if build_target_site!=null:
 		if not is_instance_valid(build_target_site) or build_target_site.is_complete:
 			build_target_site=null
