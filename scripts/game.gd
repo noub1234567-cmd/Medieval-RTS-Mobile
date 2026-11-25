@@ -811,11 +811,14 @@ func demolish_selected_building()->void:
 	help_label.text="Building demolished — 15% of resources refunded"
 	update_status()
 
+func is_worker_idle(unit:Node2D)->bool:
+	return is_instance_valid(unit) and unit.team==0 and unit.health>0 and not unit.moving and not unit.path_pending and unit.target==null and unit.harvest_target_node==null and unit.resume_harvest_node==null and unit.storage_target==null and unit.build_target_site==null and unit.upgrade_target_building==null
+
 func assign_builder_to_site(site:Node2D)->void:
 	var builder:Node2D=null
 	var nearest=INF
 	for unit in units:
-		if is_instance_valid(unit) and unit.team==0 and unit.health>0 and unit.build_target_site==null and unit.harvest_target_node==null and unit.storage_target==null:
+		if is_worker_idle(unit):
 			var d=unit.position.distance_to(site.position)
 			if d<nearest:nearest=d;builder=unit
 	if builder!=null:builder.build_target(site)
@@ -839,7 +842,7 @@ func upgrade_selected_town_center()->void:
 	var builder:Node2D=null
 	var nearest=INF
 	for worker in units:
-		if is_instance_valid(worker) and worker.team==0 and worker.health>0 and worker.upgrade_target_building==null and worker.build_target_site==null and worker.harvest_target_node==null and worker.storage_target==null:
+		if is_worker_idle(worker):
 			var d=worker.position.distance_to(tc.position)
 			if d<nearest:nearest=d;builder=worker
 	if builder==null:
@@ -873,7 +876,7 @@ func upgrade_selected_building()->void:
 	var worker:Node2D=null
 	var nearest=INF
 	for w in units:
-		if is_instance_valid(w) and w.team==0 and w.health>0 and w.upgrade_target_building==null and w.build_target_site==null and w.harvest_target_node==null and w.storage_target==null:
+		if is_worker_idle(w):
 			var d=w.position.distance_to(b.position)
 			if d<nearest:nearest=d;worker=w
 	if worker==null:
