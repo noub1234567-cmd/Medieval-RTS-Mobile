@@ -296,19 +296,19 @@ func touch_tap(pos:Vector2)->void:
 		if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
 		help_label.text="Construction selected — cancel to recover 60% of cost"
 		return
+	var structure=find_player_building_at(pos)
+	if structure!=null:
+		clear_selection()
+		selected_building=structure
+		if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
+		if is_instance_valid(demolish_building_button):demolish_building_button.visible=true
+		if structure.building_type=="Guard Tower":structure.set_range_visible(true)
+		help_label.text="Building selected — demolish to recover 15% of cost"
+		return
 	var unit=find_player_unit_at(pos)
 	if unit!=null:
 		clear_selection()
 		add_selection(unit)
-		return
-	var tower=find_player_building_at(pos)
-	if tower!=null:
-		clear_selection()
-		selected_building=tower
-		if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
-		if is_instance_valid(demolish_building_button):demolish_building_button.visible=true
-		tower.set_range_visible(true)
-		help_label.text="Building selected — demolish to recover 15% of cost"
 		return
 	if not selected.is_empty():
 		attack_or_move(pos)
