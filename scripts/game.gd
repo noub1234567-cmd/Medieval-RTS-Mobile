@@ -12,6 +12,7 @@ var units: Array[Node2D] = []
 var pathfinding_queue:Array[Node2D]=[]
 var pathfinding_budget:=2
 var selected: Array[Node2D] = []
+var selected_building:Node2D=null
 var drag_start := Vector2.ZERO
 var dragging := false
 var camera_offset := Vector2(0, -640)
@@ -270,6 +271,17 @@ func find_player_unit_at(pos:Vector2)->Node2D:
 				nearest=unit
 	return nearest
 
+func find_player_building_at(pos:Vector2)->Node2D:
+	var nearest:Node2D=null
+	var best_distance:=58.0
+	for building in buildings:
+		if is_instance_valid(building) and building.team==0 and building.building_type=="Guard Tower" and building.health>0:
+			var distance=building.position.distance_to(pos)
+			if distance<best_distance:
+				best_distance=distance
+				nearest=building
+	return nearest
+
 func touch_tap(pos:Vector2)->void:
 	if placing_building:
 		place_building(pos)
@@ -278,6 +290,13 @@ func touch_tap(pos:Vector2)->void:
 	if unit!=null:
 		clear_selection()
 		add_selection(unit)
+		return
+	var tower=find_player_building_at(pos)
+	if tower!=null:
+		clear_selection()
+		selected_building=tower
+		tower.set_range_visible(true)
+		help_label.text="Guard Tower selected — range: %d" % int(tower.attack_range)
 		return
 	if not selected.is_empty():
 		attack_or_move(pos)
@@ -308,6 +327,9 @@ func clear_selection() -> void:
 	for u in selected:
 		u.set_selected(false)
 	selected.clear()
+	if is_instance_valid(selected_building):
+		selected_building.set_range_visible(false)
+	selected_building=null
 
 func add_selection(u:Node2D) -> void:
 	if not selected.has(u):
