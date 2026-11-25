@@ -961,6 +961,13 @@ func building_upgrade_completed(b:Node2D)->void:
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
 	if b.team==0:
+		var name_label:Label=null
+		for child in b.get_children():
+			if child is Label and child!=b.construction_label and child!=b.upgrade_label:
+				name_label=child
+				break
+		if is_instance_valid(name_label):
+				name_label.text=b.building_type + (" Level 2" if b.building_upgrade_level>=2 else "")
 		if b.building_type=="House" and b.building_upgrade_level>=2:
 			population_cap+=3
 		elif b.building_type=="Warehouse":
