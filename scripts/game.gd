@@ -126,6 +126,7 @@ func create_player_storage() -> void:
 	shape.color=Color(0.68,0.55,0.28)
 	depot.add_child(shape)
 	var label:=Label.new()
+	label.name="TownCenterNameLabel"
 	label.text="Town Center"
 	label.position=Vector2(-40,-54)
 	label.scale=Vector2(0.8,0.8)
