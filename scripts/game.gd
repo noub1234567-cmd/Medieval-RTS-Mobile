@@ -516,10 +516,18 @@ func begin_placement(building_name:String) -> void:
 	if not is_instance_valid(building_ghost):
 		building_ghost=Node2D.new()
 		building_ghost.name="BuildingPlacementGhost"
+		building_ghost.z_index=20
 		var shape:=Polygon2D.new()
 		shape.name="GhostShape"
 		shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
+		shape.color=Color(0.2,1.0,0.25,0.78)
 		building_ghost.add_child(shape)
+		var outline:=Line2D.new()
+		outline.name="GhostOutline"
+		outline.points=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10),Vector2(0,-26)])
+		outline.width=3.0
+		outline.default_color=Color(0.15,1.0,0.2,1.0)
+		building_ghost.add_child(outline)
 		var label:=Label.new()
 		label.name="GhostLabel"
 		label.position=Vector2(-32,-42)
@@ -551,10 +559,12 @@ func update_building_ghost()->void:
 	building_ghost.position=snapped
 	placement_cursor_valid=is_building_placement_valid(snapped)
 	var shape=building_ghost.get_node("GhostShape") as Polygon2D
-	shape.color=Color(0.2,1.0,0.25,0.55) if placement_cursor_valid else Color(1.0,0.2,0.15,0.55)
+	shape.color=Color(0.1,1.0,0.15,0.82) if placement_cursor_valid else Color(1.0,0.08,0.08,0.82)
+	var outline=building_ghost.get_node("GhostOutline") as Line2D
+	outline.default_color=Color(0.05,0.9,0.1,1.0) if placement_cursor_valid else Color(1.0,0.05,0.05,1.0)
 	var label=building_ghost.get_node("GhostLabel") as Label
-	label.text=pending_building
-	label.modulate=Color(0.7,1.0,0.7) if placement_cursor_valid else Color(1.0,0.6,0.6)
+	label.text=pending_building + (" - VALID" if placement_cursor_valid else " - INVALID")
+	label.modulate=Color(0.5,1.0,0.5) if placement_cursor_valid else Color(1.0,0.35,0.35)
 
 func is_position_inside_map(pos:Vector2)->bool:
 	var cell=world_to_grid(pos)
