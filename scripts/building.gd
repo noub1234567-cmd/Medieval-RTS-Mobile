@@ -134,7 +134,7 @@ func add_upgrade_work(amount:float)->void:
 		upgrade_bar_bg.visible=false
 		upgrade_bar_fill.visible=false
 		var shape=get_node_or_null("Polygon2D")
-		if shape is Polygon2D:shape.color=Color(0.78,0.68,0.42)
+		if shape is Polygon2D:shape.color=Color(0.15,0.45,1.0,1.0)
 		var parent=get_parent()
 		if parent!=null and parent.has_method("town_center_upgrade_completed"):parent.town_center_upgrade_completed(self)
 
