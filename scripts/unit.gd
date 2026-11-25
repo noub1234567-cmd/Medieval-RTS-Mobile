@@ -312,7 +312,7 @@ func _process(delta:float)->void:
 			moving=false
 			path_pending=false
 			route=PackedVector2Array()
-			var worker_count=max(1,upgrade_target_building.get_upgrade_worker_count())
+			var worker_count=max(1,upgrade_target_building.get_upgrade_active_worker_count())
 			var speed_multiplier=upgrade_target_building.get_upgrade_speed_multiplier()
 			upgrade_target_building.add_upgrade_work(delta*8.0*speed_multiplier/float(worker_count))
 		else:
