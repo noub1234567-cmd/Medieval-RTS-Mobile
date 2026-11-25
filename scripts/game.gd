@@ -298,6 +298,11 @@ func touch_tap(pos:Vector2)->void:
 	if placing_building:
 		place_building(pos)
 		return
+	# Manually selected workers can be reassigned to an upgrade in progress.
+	var upgrading_target=find_upgrading_building_at(pos)
+	if upgrading_target!=null and not selected.is_empty():
+		assign_selected_workers_to_upgrade(upgrading_target)
+		return
 	# When workers are selected, resolve construction-site hits first and
 	# issue the build order before any building-selection or movement logic.
 	var site=find_unfinished_building_at(pos)
@@ -745,6 +750,36 @@ func place_building(pos:Vector2) -> void:
 	help_label.text="Tap units then tap destination. Drag to pan."
 	update_status()
 
+
+func find_upgrading_building_at(pos:Vector2)->Node2D:
+	var nearest:Node2D=null
+	var best_distance:=110.0
+	for structure in buildings:
+		if is_instance_valid(structure) and structure.team==0 and structure.is_upgrading:
+			var distance=structure.position.distance_to(pos)
+			if distance<best_distance:
+				best_distance=distance
+				nearest=structure
+	return nearest
+
+func assign_selected_workers_to_upgrade(structure:Node2D)->void:
+	if not is_instance_valid(structure) or not structure.is_upgrading:return
+	var assigned:=0
+	var rejected:=0
+	for worker in selected:
+		if not is_instance_valid(worker) or worker.team!=0:continue
+		if worker.upgrade_target_building==structure:continue
+		if structure.get_upgrade_worker_count()>=8:
+			rejected+=1
+			continue
+		if worker.upgrade_target(structure):
+			assigned+=1
+	if assigned>0:
+		help_label.text="Added %d worker(s) to upgrade — %d/8 workers" % [assigned,structure.get_upgrade_worker_count()]
+	elif rejected>0:
+		help_label.text="Upgrade worker limit reached (8)"
+	else:
+		help_label.text="No new workers assigned — %d/8 workers" % structure.get_upgrade_worker_count()
 
 func find_unfinished_building_at(pos:Vector2)->Node2D:
 	var nearest:Node2D=null
