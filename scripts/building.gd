@@ -140,8 +140,15 @@ func get_upgrade_worker_count()->int:
 	upgrade_workers=valid_workers
 	return upgrade_workers.size()
 
+func get_upgrade_active_worker_count()->int:
+	var active:=0
+	for worker in upgrade_workers:
+		if is_instance_valid(worker) and worker.health>0 and worker.upgrade_target_building==self and worker.position.distance_to(position)<=58.0:
+			active+=1
+	return active
+
 func get_upgrade_speed_multiplier()->float:
-	return 1.0+float(min(max(get_upgrade_worker_count()-1,0),7))*0.1
+	return 1.0+float(min(max(get_upgrade_active_worker_count()-1,0),7))*0.1
 
 func register_upgrade_worker(worker:Node2D)->bool:
 	if not is_instance_valid(worker) or get_upgrade_worker_count()>=8:return false
@@ -156,7 +163,7 @@ func unregister_upgrade_worker(worker:Node2D)->void:
 
 func update_upgrade_display()->void:
 	if is_instance_valid(upgrade_label) and is_upgrading:
-		upgrade_label.text="Upgrading %d%% | Workers %d/8" % [int(upgrade_progress),get_upgrade_worker_count()]
+		upgrade_label.text="Upgrading %d%% | Workers %d/8 (%d working)" % [int(upgrade_progress),get_upgrade_worker_count(),get_upgrade_active_worker_count()]
 
 func add_upgrade_work(amount:float)->void:
 	if not is_upgrading:return
