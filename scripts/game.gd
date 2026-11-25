@@ -814,8 +814,8 @@ func player_unit_died(unit:Node2D)->void:
 
 func upgrade_selected_town_center()->void:
 	var tc=selected_building
-	if not is_instance_valid(tc) or tc.building_type!="Town Center" or tc.town_center_level>=2:
-		help_label.text="Select Town Center — maximum level reached or invalid"
+	if not is_instance_valid(tc) or tc.building_type!="Town Center" or tc.town_center_level>=2 or tc.is_upgrading:
+		help_label.text="Town Center is already upgrading or cannot be upgraded"
 		return
 	var cost={"wood":200,"gold":150,"stone":100}
 	for key in cost:
