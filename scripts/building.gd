@@ -1,5 +1,7 @@
 extends Node2D
 
+const ProjectileScript := preload("res://scripts/projectile.gd")
+
 var team:int=0
 var max_health:int=300
 var health:int=300
@@ -87,7 +89,12 @@ func _process(delta:float)->void:
 				nearest=d
 				target=u
 	if target!=null:
-		target.take_damage(attack_damage)
+		var projectile := Node2D.new()
+		projectile.set_script(ProjectileScript)
+		projectile.target=target
+		projectile.damage=attack_damage
+		projectile.position=position+Vector2(0,-24)
+		parent.add_child(projectile)
 		attack_timer=attack_cooldown
 
 func take_damage(amount:int)->void:
