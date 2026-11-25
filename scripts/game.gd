@@ -1017,7 +1017,8 @@ func _process(delta:float) -> void:
 		for b in buildings:
 			if b.is_complete and b.name=="Farm": resources.food+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
 			elif b.is_complete and b.name=="House": resources.gold+=3
-			elif b.is_complete and b.name=="Lumber Mill": resources.wood+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))\n\t\t\telif b.is_complete and b.name=="Quarry": resources.stone+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
+			elif b.is_complete and b.name=="Lumber Mill": resources.wood+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
+			elif b.is_complete and b.name=="Quarry": resources.stone+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
 		update_status()
 	var motion:=Vector2.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): motion.x+=1
