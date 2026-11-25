@@ -131,6 +131,8 @@ func add_upgrade_work(amount:float)->void:
 		is_upgrading=false
 		town_center_level=2
 		upgrade_label.text="Town Center Level 2"
+		var original_label=get_node_or_null("TownCenterNameLabel")
+		if original_label is Label:original_label.visible=false
 		upgrade_bar_bg.visible=false
 		upgrade_bar_fill.visible=false
 		var shape=get_node_or_null("Polygon2D")
