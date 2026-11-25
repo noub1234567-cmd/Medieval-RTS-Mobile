@@ -53,6 +53,7 @@ var enemy_toggle_button: Button
 var cancel_build_button: Button
 var demolish_building_button: Button
 var upgrade_town_center_button: Button
+var upgrade_building_button: Button
 var pause_toggle_button: Button
 var game_paused := false
 var enemy_attack_losses := 0
@@ -330,8 +331,9 @@ func touch_tap(pos:Vector2)->void:
 		selected_building=structure
 		if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 		if is_instance_valid(demolish_building_button):demolish_building_button.visible=true
+		if is_instance_valid(upgrade_building_button):upgrade_building_button.visible=(structure.is_complete and not structure.is_upgrading and structure.building_upgrade_level<2 and find_town_center_level()>=2)
 		if structure.building_type=="Guard Tower":structure.set_range_visible(true)
-		help_label.text="Building selected — demolish to recover 15% of cost"
+		help_label.text="Building selected — demolish or upgrade (Town Center Level 2 unlocks upgrades)"
 		return
 	var unit=find_player_unit_at(pos)
 	if unit!=null:
@@ -373,6 +375,7 @@ func clear_selection() -> void:
 	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 	if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
 	if is_instance_valid(upgrade_town_center_button):upgrade_town_center_button.visible=false
+	if is_instance_valid(upgrade_building_button):upgrade_building_button.visible=false
 
 func add_selection(u:Node2D) -> void:
 	if not selected.has(u):
@@ -517,6 +520,14 @@ func create_hud() -> void:
 	upgrade_town_center_button.z_index=100
 	upgrade_town_center_button.pressed.connect(upgrade_selected_town_center)
 	hud.add_child(upgrade_town_center_button)
+	upgrade_building_button=Button.new()
+	upgrade_building_button.text="Upgrade Building (L2)"
+	upgrade_building_button.custom_minimum_size=Vector2(220,44)
+	upgrade_building_button.position=Vector2(8,202)
+	upgrade_building_button.visible=false
+	upgrade_building_button.z_index=100
+	upgrade_building_button.pressed.connect(upgrade_selected_building)
+	hud.add_child(upgrade_building_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
@@ -796,6 +807,7 @@ func demolish_selected_building()->void:
 	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 	if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
 	if is_instance_valid(upgrade_town_center_button):upgrade_town_center_button.visible=false
+	if is_instance_valid(upgrade_building_button):upgrade_building_button.visible=false
 	help_label.text="Building demolished — 15% of resources refunded"
 	update_status()
 
@@ -838,6 +850,57 @@ func upgrade_selected_town_center()->void:
 	builder.upgrade_target(tc)
 	if is_instance_valid(upgrade_town_center_button):upgrade_town_center_button.visible=false
 	help_label.text="Town Center upgrade started — Level 2"
+	update_status()
+
+func find_town_center_level()->int:
+	for b in buildings:
+		if is_instance_valid(b) and b.team==0 and b.building_type=="Town Center":return b.town_center_level
+	return 1
+
+func upgrade_selected_building()->void:
+	var b=selected_building
+	if not is_instance_valid(b) or b.team!=0 or not b.is_complete or b.building_type=="Town Center" or b.is_upgrading or b.building_upgrade_level>=2:
+		help_label.text="Select an eligible completed building"
+		return
+	if find_town_center_level()<2:
+		help_label.text="Upgrade Town Center to Level 2 first"
+		return
+	var cost={"wood":120,"gold":80,"stone":60}
+	for key in cost:
+		if resources.get(key,0)<cost[key]:
+			help_label.text="Building upgrade requires 120 wood, 80 gold and 60 stone"
+			return
+	var worker:Node2D=null
+	var nearest=INF
+	for w in units:
+		if is_instance_valid(w) and w.team==0 and w.health>0 and w.upgrade_target_building==null and w.build_target_site==null and w.harvest_target_node==null and w.storage_target==null:
+			var d=w.position.distance_to(b.position)
+			if d<nearest:nearest=d;worker=w
+	if worker==null:
+		help_label.text="No available worker to upgrade this building"
+		return
+	for key in cost:resources[key]-=cost[key]
+	b.begin_building_upgrade()
+	worker.upgrade_target(b)
+	if is_instance_valid(upgrade_building_button):upgrade_building_button.visible=false
+	help_label.text="Building upgrade started — Level 2"
+	update_status()
+
+func building_upgrade_completed(b:Node2D)->void:
+	if b.building_type=="House":population_cap+=3
+	elif b.building_type=="Warehouse":storage_capacity+=1000
+	elif b.building_type=="Guard Tower":
+		b.attack_range+=50.0
+		b.attack_damage+=10
+		b.update_range_indicator_geometry()
+	elif b.building_type=="Barracks":
+		b.max_health+=150
+		b.health+=150
+		b.update_health_bar()
+	elif b.building_type=="Wall":
+		b.max_health+=100
+		b.health+=100
+		b.update_health_bar()
 	update_status()
 
 func building_completed(b:Node2D)->void:
@@ -913,7 +976,7 @@ func _process(delta:float) -> void:
 	if income_timer>=5.0:
 		income_timer=0.0
 		for b in buildings:
-			if b.is_complete and b.name=="Farm": resources.food+=10
+			if b.is_complete and b.name=="Farm": resources.food+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
 			elif b.is_complete and b.name=="House": resources.gold+=3
 		update_status()
 	var motion:=Vector2.ZERO
