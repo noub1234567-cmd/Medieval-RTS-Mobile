@@ -826,7 +826,7 @@ func upgrade_selected_town_center()->void:
 	var builder:Node2D=null
 	var nearest=INF
 	for worker in units:
-		if is_instance_valid(worker) and worker.team==0 and worker.health>0 and worker.upgrade_target==null and worker.build_target_site==null and worker.harvest_target_node==null and worker.storage_target==null:
+		if is_instance_valid(worker) and worker.team==0 and worker.health>0 and worker.upgrade_target_building==null and worker.build_target_site==null and worker.harvest_target_node==null and worker.storage_target==null:
 			var d=worker.position.distance_to(tc.position)
 			if d<nearest:nearest=d;builder=worker
 	if builder==null:
