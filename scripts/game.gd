@@ -45,6 +45,8 @@ var enemy_attack_group: Array[Node2D] = []
 var enemy_attack_active := false
 var enemy_enabled := true
 var enemy_toggle_button: Button
+var pause_toggle_button: Button
+var game_paused := false
 var enemy_attack_losses := 0
 var tree_positions: Array[Vector2] = []
 var resource_nodes: Array[Node2D] = []
@@ -355,6 +357,7 @@ func update_view() -> void:
 
 func create_hud() -> void:
 	hud=CanvasLayer.new()
+	hud.process_mode=Node.PROCESS_MODE_ALWAYS
 	add_child(hud)
 	var panel:=PanelContainer.new()
 	panel.position=Vector2(8,8)
@@ -398,6 +401,11 @@ func create_hud() -> void:
 	enemy_toggle_button.custom_minimum_size=Vector2(110,32)
 	enemy_toggle_button.pressed.connect(toggle_enemy)
 	enemy_row.add_child(enemy_toggle_button)
+	pause_toggle_button=Button.new()
+	pause_toggle_button.text="Pause"
+	pause_toggle_button.custom_minimum_size=Vector2(90,32)
+	pause_toggle_button.pressed.connect(toggle_pause)
+	enemy_row.add_child(pause_toggle_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
@@ -542,6 +550,14 @@ func building_completed(b:Node2D)->void:
 		if not storage_points.has(b):
 			storage_points.append(b)
 	update_status()
+
+func toggle_pause()->void:
+	game_paused=not game_paused
+	get_tree().paused=game_paused
+	if is_instance_valid(pause_toggle_button):
+		pause_toggle_button.text="Resume" if game_paused else "Pause"
+	if is_instance_valid(help_label):
+		help_label.text="Game paused — press Resume to continue" if game_paused else "Game resumed"
 
 func toggle_enemy()->void:
 	enemy_enabled=not enemy_enabled
