@@ -485,7 +485,7 @@ func find_spawn_position(origin:Vector2)->Vector2:
 	var offsets=[Vector2(48,0),Vector2(-48,0),Vector2(0,48),Vector2(0,-48),Vector2(48,48),Vector2(-48,-48),Vector2(48,-48),Vector2(-48,48)]
 	for off in offsets:
 		var p=origin+off
-		if not is_unit_position_blocked(p,null):
+		if is_position_inside_map(p) and not is_unit_position_blocked(p,null):
 			return p
 	var fallback=snap_to_map_cell(origin+Vector2(60,60))
 	if is_position_inside_map(fallback) and not is_unit_position_blocked(fallback,null):
