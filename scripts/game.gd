@@ -275,7 +275,7 @@ func find_player_building_at(pos:Vector2)->Node2D:
 	var nearest:Node2D=null
 	var best_distance:=58.0
 	for building in buildings:
-		if is_instance_valid(building) and building.team==0 and building.building_type=="Guard Tower" and building.health>0:
+		if is_instance_valid(building) and building.team==0 and building.building_type=="Guard Tower" and building.health>0 and building.is_complete:
 			var distance=building.position.distance_to(pos)
 			if distance<best_distance:
 				best_distance=distance
