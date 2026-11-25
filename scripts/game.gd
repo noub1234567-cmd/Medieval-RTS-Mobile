@@ -518,7 +518,7 @@ func begin_placement(building_name:String) -> void:
 			building_ghost.queue_free()
 			building_ghost=null
 		help_label.text="Placement cancelled"
-			return
+		return
 	placing_building=true
 	pending_building=building_name
 	if not is_instance_valid(building_ghost):
