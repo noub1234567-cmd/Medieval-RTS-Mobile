@@ -52,10 +52,11 @@ func create_range_indicator()->void:
 	add_child(range_indicator)
 
 func set_range_visible(value:bool)->void:
+	var show_range:=value and is_complete and building_type=="Guard Tower" and team==0
 	if is_instance_valid(range_indicator):
-		range_indicator.visible=value
+		range_indicator.visible=show_range
 	if is_instance_valid(range_fill):
-		range_fill.visible=value
+		range_fill.visible=show_range
 
 func create_construction_display()->void:
 	construction_label=Label.new()
