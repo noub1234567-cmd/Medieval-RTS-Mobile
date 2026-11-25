@@ -12,6 +12,7 @@ var attack_timer:float=0.0
 var attack_cooldown:float=1.5
 var health_bar:Polygon2D
 var range_indicator:Line2D
+var range_fill:Polygon2D
 var construction_progress:float=0.0
 var is_complete:bool=true
 var construction_bar_bg:Polygon2D
@@ -30,23 +31,31 @@ func _ready()->void:
 		update_construction_display()
 
 func create_range_indicator()->void:
-	range_indicator=Line2D.new()
-	range_indicator.name="TowerRangeIndicator"
-	range_indicator.width=2.0
-	range_indicator.default_color=Color(0.25,0.85,1.0,0.65)
-	range_indicator.closed=true
 	var points:=PackedVector2Array()
 	for i in range(97):
 		var angle=TAU*float(i)/96.0
 		points.append(Vector2(cos(angle),sin(angle))*attack_range)
+	range_fill=Polygon2D.new()
+	range_fill.name="TowerRangeFill"
+	range_fill.polygon=points
+	range_fill.color=Color(0.05,0.65,1.0,0.16)
+	range_fill.z_index=8
+	range_fill.visible=false
+	add_child(range_fill)
+	range_indicator=Line2D.new()
+	range_indicator.name="TowerRangeIndicator"
 	range_indicator.points=points
+	range_indicator.width=5.0
+	range_indicator.default_color=Color(0.0,0.9,1.0,0.95)
+	range_indicator.z_index=9
 	range_indicator.visible=false
-	range_indicator.z_index=-1
 	add_child(range_indicator)
 
 func set_range_visible(value:bool)->void:
 	if is_instance_valid(range_indicator):
 		range_indicator.visible=value
+	if is_instance_valid(range_fill):
+		range_fill.visible=value
 
 func create_construction_display()->void:
 	construction_label=Label.new()
