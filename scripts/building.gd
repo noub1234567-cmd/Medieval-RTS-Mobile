@@ -18,6 +18,12 @@ var is_complete:bool=true
 var construction_bar_bg:Polygon2D
 var construction_bar_fill:Polygon2D
 var construction_label:Label
+var town_center_level:int=1
+var is_upgrading:bool=false
+var upgrade_progress:float=0.0
+var upgrade_label:Label
+var upgrade_bar_bg:Polygon2D
+var upgrade_bar_fill:Polygon2D
 
 func _ready()->void:
 	if building_type=="Guard Tower" and team==0:
@@ -92,6 +98,45 @@ func update_health_bar()->void:
 	var ratio=float(health)/float(max_health)
 	health_bar.polygon=PackedVector2Array([Vector2(-18,-2),Vector2(-18+36*ratio,-2),Vector2(-18+36*ratio,2),Vector2(-18,2)])
 	health_bar.color=Color(0.2,0.9,0.25) if ratio>0.5 else Color(1,0.65,0.1) if ratio>0.25 else Color(0.95,0.2,0.15)
+
+func begin_upgrade()->void:
+	if building_type!="Town Center" or town_center_level>=2:return
+	is_upgrading=true
+	upgrade_progress=0.0
+	upgrade_label=Label.new()
+	upgrade_label.text="Upgrading 0%"
+	upgrade_label.position=Vector2(-48,-70)
+	upgrade_label.add_theme_font_size_override("font_size",12)
+	upgrade_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	upgrade_label.size=Vector2(96,18)
+	add_child(upgrade_label)
+	upgrade_bar_bg=Polygon2D.new()
+	upgrade_bar_bg.position=Vector2(0,-58)
+	upgrade_bar_bg.polygon=PackedVector2Array([Vector2(-24,-2),Vector2(24,-2),Vector2(24,3),Vector2(-24,3)])
+	upgrade_bar_bg.color=Color(0.12,0.12,0.12,0.95)
+	add_child(upgrade_bar_bg)
+	upgrade_bar_fill=Polygon2D.new()
+	upgrade_bar_fill.position=Vector2(-24,-58)
+	upgrade_bar_fill.color=Color(0.3,0.65,1.0,1)
+	upgrade_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(0,-2),Vector2(0,3),Vector2(0,3)])
+	add_child(upgrade_bar_fill)
+
+func add_upgrade_work(amount:float)->void:
+	if not is_upgrading:return
+	upgrade_progress=min(100.0,upgrade_progress+amount)
+	var width=48.0*upgrade_progress/100.0
+	upgrade_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(width,-2),Vector2(width,3),Vector2(0,3)])
+	upgrade_label.text="Upgrading %d%%" % int(upgrade_progress)
+	if upgrade_progress>=100.0:
+		is_upgrading=false
+		town_center_level=2
+		upgrade_label.text="Town Center Level 2"
+		upgrade_bar_bg.visible=false
+		upgrade_bar_fill.visible=false
+		var shape=get_node_or_null("Polygon2D")
+		if shape is Polygon2D:shape.color=Color(0.78,0.68,0.42)
+		var parent=get_parent()
+		if parent!=null and parent.has_method("town_center_upgrade_completed"):parent.town_center_upgrade_completed(self)
 
 func add_build_work(amount:float)->void:
 	if is_complete:return
