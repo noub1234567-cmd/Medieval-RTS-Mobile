@@ -281,7 +281,9 @@ func _process(delta:float)->void:
 			if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 	attack_timer=max(0.0,attack_timer-delta)
 	acquire_timer-=delta
-	if team==1 and target==null and acquire_timer<=0.0:
+	var parent_for_enemy=get_parent()
+	var enemy_active=parent_for_enemy!=null and parent_for_enemy.get("enemy_enabled")
+	if team==1 and enemy_active and target==null and acquire_timer<=0.0:
 		acquire_timer=1.5
 		acquire_player_target()
 	if target!=null:
