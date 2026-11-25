@@ -2,7 +2,7 @@ name: Godot Web Build and Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [main, building-upgrades]
   workflow_dispatch:
 
 permissions:
@@ -67,6 +67,7 @@ jobs:
           path: build/web
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: export
     runs-on: ubuntu-latest
     environment:
