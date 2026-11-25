@@ -29,6 +29,9 @@ var resources := {"wood": 300, "food": 250, "gold": 200, "stone": 0}
 var buildings: Array[Node2D] = []
 var placing_building := false
 var pending_building := ""
+var building_ghost: Node2D
+var placement_cursor_world := Vector2.ZERO
+var placement_cursor_valid := false
 var construction_sites: Array[Node2D] = []
 var population := 8
 var population_cap := 8
@@ -207,16 +210,23 @@ func _input(event:InputEvent) -> void:
 			update_view()
 	elif event is InputEventKey and event.pressed and event.keycode==KEY_ESCAPE:
 		placing_building=false
+		if is_instance_valid(building_ghost): building_ghost.queue_free(); building_ghost=null
 		if is_instance_valid(help_label): help_label.text="Placement cancelled"
-	elif event is InputEventMouseMotion and dragging:
-		drag_current=screen_to_world(event.position)
-		overlay_update()
+	elif event is InputEventMouseMotion:
+		if placing_building:
+			placement_cursor_world=screen_to_world(event.position)
+			update_building_ghost()
+		if dragging:
+			drag_current=screen_to_world(event.position)
+			overlay_update()
 	elif event is InputEventScreenTouch:
 		if event.pressed:
 			if event.position.x<520.0 and event.position.y<180.0:
 				dragging=false
 				return
 			touch_start_screen=event.position
+			placement_cursor_world=screen_to_world(event.position)
+			if placing_building: update_building_ghost()
 			drag_start=screen_to_world(event.position)
 			drag_current=drag_start
 			touch_unit_start=find_player_unit_at(drag_start)!=null
@@ -238,6 +248,8 @@ func _input(event:InputEvent) -> void:
 				update_status()
 			dragging=false
 	elif event is InputEventScreenDrag and dragging:
+		placement_cursor_world=screen_to_world(event.position)
+		if placing_building: update_building_ghost()
 		if not touch_unit_start and not placing_building:
 			touch_pan=true
 			camera_offset+=event.relative
@@ -501,7 +513,48 @@ func enemy_count() -> int:
 func begin_placement(building_name:String) -> void:
 	placing_building=true
 	pending_building=building_name
-	help_label.text="Tap map to place %s (Esc cancels)" % building_name
+	if not is_instance_valid(building_ghost):
+		building_ghost=Node2D.new()
+		building_ghost.name="BuildingPlacementGhost"
+		var shape:=Polygon2D.new()
+		shape.name="GhostShape"
+		shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
+		building_ghost.add_child(shape)
+		var label:=Label.new()
+		label.name="GhostLabel"
+		label.position=Vector2(-32,-42)
+		label.scale=Vector2(0.8,0.8)
+		building_ghost.add_child(label)
+		add_child(building_ghost)
+	placement_cursor_world=screen_to_world(get_viewport().get_mouse_position())
+	update_building_ghost()
+	help_label.text="Move cursor, then tap/click to place %s (Esc cancels)" % building_name
+
+func get_placement_position(pos:Vector2)->Vector2:
+	return grid_to_screen(world_to_grid(pos))
+
+func is_building_placement_valid(pos:Vector2)->bool:
+	var cell=world_to_grid(pos)
+	if cell.x<0 or cell.y<0 or cell.x>=GRID.x or cell.y>=GRID.y:return false
+	for existing in buildings+enemy_buildings:
+		if is_instance_valid(existing) and existing.health>0 and pos.distance_to(existing.position)<54.0:return false
+	for tree_pos in tree_positions:
+		if pos.distance_to(tree_pos)<48.0:return false
+	if not building_cost.has(pending_building):return false
+	for key in building_cost[pending_building]:
+		if resources.get(key,0)<building_cost[pending_building][key]:return false
+	return true
+
+func update_building_ghost()->void:
+	if not placing_building or not is_instance_valid(building_ghost):return
+	var snapped=get_placement_position(placement_cursor_world)
+	building_ghost.position=snapped
+	placement_cursor_valid=is_building_placement_valid(snapped)
+	var shape=building_ghost.get_node("GhostShape") as Polygon2D
+	shape.color=Color(0.2,1.0,0.25,0.55) if placement_cursor_valid else Color(1.0,0.2,0.15,0.55)
+	var label=building_ghost.get_node("GhostLabel") as Label
+	label.text=pending_building
+	label.modulate=Color(0.7,1.0,0.7) if placement_cursor_valid else Color(1.0,0.6,0.6)
 
 func is_position_inside_map(pos:Vector2)->bool:
 	var cell=world_to_grid(pos)
@@ -515,23 +568,11 @@ func snap_to_map_cell(pos:Vector2)->Vector2:
 
 func place_building(pos:Vector2) -> void:
 	if not placing_building: return
-	pos=snap_to_map_cell(pos)
-	for existing in buildings+enemy_buildings:
-		if is_instance_valid(existing) and existing.health>0 and pos.distance_to(existing.position)<54.0:
-			help_label.text="Cannot place building here: occupied"
-			placing_building=false
-			return
-	for tree_pos in tree_positions:
-		if pos.distance_to(tree_pos)<48.0:
-			help_label.text="Cannot place building on trees"
-			placing_building=false
-			return
+	pos=get_placement_position(pos)
+	if not is_building_placement_valid(pos):
+		help_label.text="Invalid placement: red preview cannot be placed"
+		return
 	var cost:Dictionary=building_cost[pending_building]
-	for key in cost:
-		if resources[key]<cost[key]:
-			help_label.text="Not enough %s" % key
-			placing_building=false
-			return
 	for key in cost: resources[key]-=cost[key]
 	var structure:=Node2D.new()
 	structure.set_script(BuildingScript)
@@ -558,6 +599,7 @@ func place_building(pos:Vector2) -> void:
 	construction_sites.append(structure)
 	assign_builder_to_site(structure)
 	placing_building=false
+	if is_instance_valid(building_ghost): building_ghost.queue_free(); building_ghost=null
 	help_label.text="Tap units then tap destination. Drag to pan."
 	update_status()
 
@@ -624,6 +666,7 @@ func update_status() -> void:
 		status_label.text="Wood: %d  Food: %d  Gold: %d  Stone: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d  Enemy base: %d  Storage: %d" % [resources.wood,resources.food,resources.gold,resources.stone,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size(),storage_capacity]
 
 func _process(delta:float) -> void:
+	if placing_building and is_instance_valid(building_ghost): update_building_ghost()
 	if enemy_attack_active:
 		monitor_enemy_attack()
 	units=units.filter(func(u): return is_instance_valid(u) and u.health>0)
