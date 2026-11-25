@@ -29,6 +29,7 @@ var status_label: Label
 var help_label: Label
 var resources := {"wood": 300, "food": 250, "gold": 200, "stone": 0}
 var buildings: Array[Node2D] = []
+var building_upgrade_levels:Dictionary={}
 var placing_building := false
 var pending_building := ""
 var building_ghost: Node2D
@@ -738,6 +739,7 @@ func place_building(pos:Vector2) -> void:
 	structure.max_health=500 if pending_building=="Guard Tower" else 200 if pending_building=="Wall" else 300
 	structure.health=structure.max_health
 	structure.building_type=pending_building
+	structure.building_upgrade_level=int(building_upgrade_levels.get(pending_building,1))
 	structure.is_complete=false
 	structure.name=pending_building
 	structure.position=pos
@@ -936,6 +938,7 @@ func upgrade_selected_building()->void:
 	update_status()
 
 func building_upgrade_completed(b:Node2D)->void:
+	building_upgrade_levels[b.building_type]=2
 	if b.building_type=="House":population_cap+=3
 	elif b.building_type=="Warehouse":storage_capacity+=1000
 	elif b.building_type=="Guard Tower":
@@ -957,11 +960,27 @@ func building_upgrade_completed(b:Node2D)->void:
 
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
-
-	if b.team==0 and b.building_type=="Warehouse":
-		storage_capacity+=1500
-		if not storage_points.has(b):
-			storage_points.append(b)
+	if b.team==0:
+		if b.building_type=="House" and b.building_upgrade_level>=2:
+			population_cap+=3
+		elif b.building_type=="Warehouse":
+			storage_capacity+=1500
+			if b.building_upgrade_level>=2:
+				storage_capacity+=1000
+			if not storage_points.has(b):
+				storage_points.append(b)
+		elif b.building_type=="Guard Tower" and b.building_upgrade_level>=2:
+			b.attack_range+=50.0
+			b.attack_damage+=10
+			b.update_range_indicator_geometry()
+		elif b.building_type=="Barracks" and b.building_upgrade_level>=2:
+			b.max_health+=150
+			b.health+=150
+			b.update_health_bar()
+		elif b.building_type=="Wall" and b.building_upgrade_level>=2:
+			b.max_health+=100
+			b.health+=100
+			b.update_health_bar()
 	update_status()
 
 func toggle_pause()->void:
