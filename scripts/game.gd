@@ -487,7 +487,10 @@ func find_spawn_position(origin:Vector2)->Vector2:
 		var p=origin+off
 		if not is_unit_position_blocked(p,null):
 			return p
-	return origin+Vector2(60,60)
+	var fallback=snap_to_map_cell(origin+Vector2(60,60))
+	if is_position_inside_map(fallback) and not is_unit_position_blocked(fallback,null):
+		return fallback
+	return snap_to_map_cell(origin)
 
 func enemy_count() -> int:
 	var count:=0
@@ -500,8 +503,29 @@ func begin_placement(building_name:String) -> void:
 	pending_building=building_name
 	help_label.text="Tap map to place %s (Esc cancels)" % building_name
 
+func is_position_inside_map(pos:Vector2)->bool:
+	var cell=world_to_grid(pos)
+	return cell.x>=0 and cell.y>=0 and cell.x<GRID.x and cell.y<GRID.y
+
+func snap_to_map_cell(pos:Vector2)->Vector2:
+	var cell=world_to_grid(pos)
+	cell.x=clampi(cell.x,0,GRID.x-1)
+	cell.y=clampi(cell.y,0,GRID.y-1)
+	return grid_to_screen(cell)
+
 func place_building(pos:Vector2) -> void:
 	if not placing_building: return
+	pos=snap_to_map_cell(pos)
+	for existing in buildings+enemy_buildings:
+		if is_instance_valid(existing) and existing.health>0 and pos.distance_to(existing.position)<54.0:
+			help_label.text="Cannot place building here: occupied"
+			placing_building=false
+			return
+	for tree_pos in tree_positions:
+		if pos.distance_to(tree_pos)<48.0:
+			help_label.text="Cannot place building on trees"
+			placing_building=false
+			return
 	var cost:Dictionary=building_cost[pending_building]
 	for key in cost:
 		if resources[key]<cost[key]:
