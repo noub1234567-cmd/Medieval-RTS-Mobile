@@ -86,6 +86,9 @@ func execute_pending_path()->void:
 	route_index=0
 
 func move_to(p:Vector2)->void:
+	var parent=get_parent()
+	if parent!=null and parent.has_method("snap_to_map_cell"):
+		p=parent.snap_to_map_cell(p)
 	target=null
 	harvest_target_node=null
 	storage_target=null
