@@ -372,6 +372,11 @@ func create_hud() -> void:
 	title.text="MEDIEVAL RTS"
 	title.add_theme_font_size_override("font_size",14)
 	top.add_child(title)
+	pause_toggle_button=Button.new()
+	pause_toggle_button.text="Pause"
+	pause_toggle_button.custom_minimum_size=Vector2(72,32)
+	pause_toggle_button.pressed.connect(toggle_pause)
+	top.add_child(pause_toggle_button)
 	var collapse:=Button.new()
 	collapse.text="−"
 	collapse.custom_minimum_size=Vector2(36,32)
@@ -401,11 +406,6 @@ func create_hud() -> void:
 	enemy_toggle_button.custom_minimum_size=Vector2(110,32)
 	enemy_toggle_button.pressed.connect(toggle_enemy)
 	enemy_row.add_child(enemy_toggle_button)
-	pause_toggle_button=Button.new()
-	pause_toggle_button.text="Pause"
-	pause_toggle_button.custom_minimum_size=Vector2(90,32)
-	pause_toggle_button.pressed.connect(toggle_pause)
-	enemy_row.add_child(pause_toggle_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
