@@ -62,7 +62,7 @@ var resource_nodes: Array[Node2D] = []
 var storage_points: Array[Node2D] = []
 var storage_capacity := 2000
 const ResourceNodeScript := preload("res://scripts/resource_node.gd")
-var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}, "Guard Tower": {"wood": 120, "gold": 60}, "Wall": {"wood": 25, "gold": 5}, "Warehouse": {"wood": 180, "gold": 70}, "Lumber Mill": {"wood": 150, "gold": 50}, "Quarry": {"wood": 150, "gold": 50}, "Gold Mine": {"wood": 150, "gold": 50}}
+var building_cost := {"Farm": {"wood": 80, "gold": 30}, "House": {"wood": 100, "gold": 50}, "Barracks": {"wood": 150, "gold": 80}, "Guard Tower": {"wood": 120, "gold": 60}, "Wall": {"wood": 25, "gold": 5}, "Warehouse": {"wood": 180, "gold": 70}, "Lumber Mill": {"wood": 150, "gold": 50}, "Quarry": {"wood": 150, "gold": 50}, "Gold Mine": {"wood": 150, "gold": 50}, "Mill": {"wood": 150, "gold": 50}}
 
 func _ready() -> void:
 	var overlay := OverlayScene.instantiate()
@@ -493,7 +493,11 @@ func create_hud() -> void:
 	second_building_row.add_theme_constant_override("separation",3)
 	v.add_child(second_building_row)
 	building_rows.append(second_building_row)
-	var building_names=["Farm","House","Barracks","Tower","Wall","Store","Lumber","Quarry","Gold"]
+	var fourth_building_row:=HBoxContainer.new()
+	fourth_building_row.add_theme_constant_override("separation",3)
+	v.add_child(fourth_building_row)
+	building_rows.append(fourth_building_row)
+	var building_names=["Farm","House","Barracks","Tower","Wall","Store","Lumber","Quarry","Gold","Mill"]
 	var third_building_row:=HBoxContainer.new()
 	third_building_row.add_theme_constant_override("separation",3)
 	v.add_child(third_building_row)
@@ -503,8 +507,8 @@ func create_hud() -> void:
 		var b:=Button.new()
 		b.text=building_name
 		b.custom_minimum_size=Vector2(54,36)
-		b.pressed.connect(func(): begin_placement("Guard Tower" if building_name=="Tower" else "Warehouse" if building_name=="Store" else "Lumber Mill" if building_name=="Lumber" else "Gold Mine" if building_name=="Gold" else building_name))
-		building_rows[0 if i<3 else 1 if i<6 else 2].add_child(b)
+		b.pressed.connect(func(): begin_placement("Guard Tower" if building_name=="Tower" else "Warehouse" if building_name=="Store" else "Lumber Mill" if building_name=="Lumber" else "Gold Mine" if building_name=="Gold" else "Mill" if building_name=="Mill" else building_name))
+		building_rows[0 if i<3 else 1 if i<6 else 2 if i<9 else 3].add_child(b)
 	var enemy_row:=HBoxContainer.new()
 	v.add_child(enemy_row)
 	enemy_toggle_button=Button.new()
@@ -743,7 +747,7 @@ func place_building(pos:Vector2) -> void:
 	structure.position=pos
 	var shape:=Polygon2D.new()
 	shape.polygon=PackedVector2Array([Vector2(0,-26),Vector2(24,-10),Vector2(24,12),Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)])
-	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4),"Guard Tower":Color(0.35,0.55,0.65),"Wall":Color(0.45,0.42,0.38),"Warehouse":Color(0.55,0.48,0.32),"Lumber Mill":Color(0.35,0.52,0.25),"Quarry":Color(0.48,0.48,0.52),"Gold Mine":Color(0.72,0.62,0.22)}[pending_building]
+	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4),"Guard Tower":Color(0.35,0.55,0.65),"Wall":Color(0.45,0.42,0.38),"Warehouse":Color(0.55,0.48,0.32),"Lumber Mill":Color(0.35,0.52,0.25),"Quarry":Color(0.48,0.48,0.52),"Gold Mine":Color(0.72,0.62,0.22),"Mill":Color(0.75,0.72,0.48)}[pending_building]
 	structure.add_child(shape)
 	var label:=Label.new()
 	label.text=pending_building
@@ -948,6 +952,7 @@ func building_upgrade_completed(b:Node2D)->void:
 		b.update_health_bar()
 	elif b.building_type=="Lumber Mill":pass
 	elif b.building_type=="Gold Mine":pass
+	elif b.building_type=="Mill":pass
 	elif b.building_type=="Wall":
 		b.max_health+=100
 		b.health+=100
@@ -1032,6 +1037,7 @@ func _process(delta:float) -> void:
 			elif b.is_complete and b.name=="Lumber Mill": resources.wood+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
 			elif b.is_complete and b.name=="Quarry": resources.stone+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
 			elif b.is_complete and b.name=="Gold Mine": resources.gold+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
+			elif b.is_complete and b.name=="Mill": resources.food+=int(round(10.0*(1.3 if b.building_upgrade_level>=2 else 1.0)))
 		update_status()
 	var motion:=Vector2.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT): motion.x+=1
