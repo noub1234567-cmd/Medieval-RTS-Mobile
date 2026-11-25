@@ -289,6 +289,12 @@ func touch_tap(pos:Vector2)->void:
 		place_building(pos)
 		return
 	var site=find_unfinished_building_at(pos)
+	if site!=null and not selected.is_empty():
+		for worker in selected:
+			if worker.team==0:
+				worker.build_target(site)
+		help_label.text="Builders reassigned to construction!"
+		return
 	if site!=null:
 		clear_selection()
 		selected_building=site
