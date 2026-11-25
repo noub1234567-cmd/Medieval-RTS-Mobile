@@ -493,22 +493,18 @@ func create_hud() -> void:
 	second_building_row.add_theme_constant_override("separation",3)
 	v.add_child(second_building_row)
 	building_rows.append(second_building_row)
-	var fourth_building_row:=HBoxContainer.new()
-	fourth_building_row.add_theme_constant_override("separation",3)
-	v.add_child(fourth_building_row)
-	building_rows.append(fourth_building_row)
-	var building_names=["Farm","House","Barracks","Tower","Wall","Store","Lumber","Quarry","Gold","Mill"]
 	var third_building_row:=HBoxContainer.new()
 	third_building_row.add_theme_constant_override("separation",3)
 	v.add_child(third_building_row)
 	building_rows.append(third_building_row)
+	var building_names=["Farm","House","Barracks","Tower","Wall","Store","Lumber","Quarry","Gold","Mill"]
 	for i in range(building_names.size()):
 		var building_name=building_names[i]
 		var b:=Button.new()
 		b.text=building_name
 		b.custom_minimum_size=Vector2(54,36)
 		b.pressed.connect(func(): begin_placement("Guard Tower" if building_name=="Tower" else "Warehouse" if building_name=="Store" else "Lumber Mill" if building_name=="Lumber" else "Gold Mine" if building_name=="Gold" else "Mill" if building_name=="Mill" else building_name))
-		building_rows[0 if i<3 else 1 if i<6 else 2 if i<9 else 3].add_child(b)
+		building_rows[0 if i<3 else 1 if i<6 else 2].add_child(b)
 	var enemy_row:=HBoxContainer.new()
 	v.add_child(enemy_row)
 	enemy_toggle_button=Button.new()
