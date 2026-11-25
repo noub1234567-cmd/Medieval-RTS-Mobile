@@ -51,6 +51,7 @@ var enemy_attack_active := false
 var enemy_enabled := true
 var enemy_toggle_button: Button
 var cancel_build_button: Button
+var demolish_building_button: Button
 var pause_toggle_button: Button
 var game_paused := false
 var enemy_attack_losses := 0
@@ -276,7 +277,7 @@ func find_player_building_at(pos:Vector2)->Node2D:
 	var nearest:Node2D=null
 	var best_distance:=58.0
 	for building in buildings:
-		if is_instance_valid(building) and building.team==0 and building.building_type=="Guard Tower" and building.health>0 and building.is_complete:
+		if is_instance_valid(building) and building.team==0 and building.building_type!="Town Center" and building.health>0 and building.is_complete:
 			var distance=building.position.distance_to(pos)
 			if distance<best_distance:
 				best_distance=distance
@@ -292,6 +293,7 @@ func touch_tap(pos:Vector2)->void:
 		clear_selection()
 		selected_building=site
 		if is_instance_valid(cancel_build_button):cancel_build_button.visible=true
+		if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
 		help_label.text="Construction selected — cancel to recover 60% of cost"
 		return
 	var unit=find_player_unit_at(pos)
@@ -304,8 +306,9 @@ func touch_tap(pos:Vector2)->void:
 		clear_selection()
 		selected_building=tower
 		if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
+		if is_instance_valid(demolish_building_button):demolish_building_button.visible=true
 		tower.set_range_visible(true)
-		help_label.text="Guard Tower selected — range: %d" % int(tower.attack_range)
+		help_label.text="Building selected — demolish to recover 15% of cost"
 		return
 	if not selected.is_empty():
 		attack_or_move(pos)
@@ -340,6 +343,7 @@ func clear_selection() -> void:
 		selected_building.set_range_visible(false)
 	selected_building=null
 	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
+	if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
 
 func add_selection(u:Node2D) -> void:
 	if not selected.has(u):
@@ -468,6 +472,14 @@ func create_hud() -> void:
 	cancel_build_button.z_index=100
 	cancel_build_button.pressed.connect(cancel_selected_construction)
 	hud.add_child(cancel_build_button)
+	demolish_building_button=Button.new()
+	demolish_building_button.text="Demolish (15%)"
+	demolish_building_button.custom_minimum_size=Vector2(180,44)
+	demolish_building_button.position=Vector2(8,106)
+	demolish_building_button.visible=false
+	demolish_building_button.z_index=100
+	demolish_building_button.pressed.connect(demolish_selected_building)
+	hud.add_child(demolish_building_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
@@ -723,6 +735,28 @@ func cancel_selected_construction()->void:
 	selected_building=null
 	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
 	help_label.text="Construction cancelled — 60% of resources refunded"
+	update_status()
+
+func demolish_selected_building()->void:
+	var structure=selected_building
+	if not is_instance_valid(structure) or structure.team!=0 or not structure.is_complete or structure.building_type=="Town Center" or not buildings.has(structure):
+		help_label.text="Select a completed building to demolish"
+		return
+	var cost:Dictionary=building_cost.get(structure.building_type,{})
+	for key in cost:
+		resources[key]+=int(floor(float(cost[key])*0.15))
+	if structure.building_type=="House":
+		population_cap=max(8,population_cap-5)
+	elif structure.building_type=="Warehouse":
+		storage_capacity=max(2000,storage_capacity-1500)
+		storage_points.erase(structure)
+	buildings.erase(structure)
+	construction_sites.erase(structure)
+	if is_instance_valid(structure):structure.queue_free()
+	selected_building=null
+	if is_instance_valid(cancel_build_button):cancel_build_button.visible=false
+	if is_instance_valid(demolish_building_button):demolish_building_button.visible=false
+	help_label.text="Building demolished — 15% of resources refunded"
 	update_status()
 
 func assign_builder_to_site(site:Node2D)->void:
