@@ -175,8 +175,10 @@ func build_target(site:Node2D)->void:
 	destination=get_building_approach_point(site)
 	set_route(destination)
 
-func upgrade_target(site:Node2D)->void:
-	if team!=0 or site==null or not is_instance_valid(site) or not site.is_upgrading:return
+func upgrade_target(site:Node2D)->bool:
+	if team!=0 or site==null or not is_instance_valid(site) or not site.is_upgrading:return false
+	if upgrade_target_building!=null and is_instance_valid(upgrade_target_building):
+		upgrade_target_building.unregister_upgrade_worker(self)
 	target=null
 	harvest_target_node=null
 	storage_target=null
@@ -185,7 +187,12 @@ func upgrade_target(site:Node2D)->void:
 	resume_harvest_node=null
 	moving=true
 	destination=get_building_approach_point(site)
+	if not site.register_upgrade_worker(self):
+		upgrade_target_building=null
+		moving=false
+		return false
 	set_route(destination)
+	return true
 
 func attack_target(enemy:Node2D)->void:
 	harvest_target_node=null
@@ -295,13 +302,19 @@ func _process(delta:float)->void:
 					if carried_amount>=cargo_capacity or harvest_target_node.amount<=0:return_to_storage()
 	if upgrade_target_building!=null:
 		if not is_instance_valid(upgrade_target_building) or not upgrade_target_building.is_upgrading:
+			if is_instance_valid(upgrade_target_building):
+				upgrade_target_building.unregister_upgrade_worker(self)
 			upgrade_target_building=null
 			moving=false
+			if carried_amount>0:
+				return_to_storage()
 		elif position.distance_to(upgrade_target_building.position)<=58.0:
 			moving=false
 			path_pending=false
 			route=PackedVector2Array()
-			upgrade_target_building.add_upgrade_work(delta*8.0)
+			var worker_count=max(1,upgrade_target_building.get_upgrade_worker_count())
+			var speed_multiplier=upgrade_target_building.get_upgrade_speed_multiplier()
+			upgrade_target_building.add_upgrade_work(delta*8.0*speed_multiplier/float(worker_count))
 		else:
 			moving=true
 			destination=get_building_approach_point(upgrade_target_building)
