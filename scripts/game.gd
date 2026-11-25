@@ -43,6 +43,8 @@ var enemy_attack_cooldown := 35.0
 var enemy_attack_level := 0
 var enemy_attack_group: Array[Node2D] = []
 var enemy_attack_active := false
+var enemy_enabled := true
+var enemy_toggle_button: Button
 var enemy_attack_losses := 0
 var tree_positions: Array[Vector2] = []
 var resource_nodes: Array[Node2D] = []
@@ -389,6 +391,13 @@ func create_hud() -> void:
 		b.custom_minimum_size=Vector2(54,36)
 		b.pressed.connect(func(): begin_placement("Guard Tower" if building_name=="Tower" else "Warehouse" if building_name=="Store" else building_name))
 		buttons.add_child(b)
+	var enemy_row:=HBoxContainer.new()
+	v.add_child(enemy_row)
+	enemy_toggle_button=Button.new()
+	enemy_toggle_button.text="Enemy: ON"
+	enemy_toggle_button.custom_minimum_size=Vector2(110,32)
+	enemy_toggle_button.pressed.connect(toggle_enemy)
+	enemy_row.add_child(enemy_toggle_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
@@ -534,6 +543,33 @@ func building_completed(b:Node2D)->void:
 			storage_points.append(b)
 	update_status()
 
+func toggle_enemy()->void:
+	enemy_enabled=not enemy_enabled
+	if is_instance_valid(enemy_toggle_button):
+		enemy_toggle_button.text="Enemy: ON" if enemy_enabled else "Enemy: OFF"
+	if not enemy_enabled:
+		enemy_attack_active=false
+		enemy_attack_group.clear()
+		for u in units:
+			if is_instance_valid(u) and u.team==1:
+				u.target=null
+				u.harvest_target_node=null
+				u.storage_target=null
+				u.build_target_site=null
+				u.resume_harvest_node=null
+				u.moving=false
+				u.path_pending=false
+				u.route=PackedVector2Array()
+				u.route_index=0
+				u.destination=u.position
+				u.acquire_timer=999999.0
+	else:
+		for u in units:
+			if is_instance_valid(u) and u.team==1:
+				u.acquire_timer=0.0
+	update_status()
+	help_label.text="Enemy activity disabled for testing" if not enemy_enabled else "Enemy activity enabled"
+
 func update_status() -> void:
 	if status_label:
 		status_label.text="Wood: %d  Food: %d  Gold: %d  Stone: %d\nPopulation: %d/%d  Selected: %d  Enemies: %d\nBuildings: %d  Enemy base: %d  Storage: %d" % [resources.wood,resources.food,resources.gold,resources.stone,population,population_cap,selected.size(),enemy_count(),buildings.size(),enemy_buildings.size(),storage_capacity]
@@ -546,17 +582,18 @@ func _process(delta:float) -> void:
 	buildings=buildings.filter(func(b): return is_instance_valid(b) and b.health>0)
 	enemy_buildings=enemy_buildings.filter(func(b): return is_instance_valid(b) and b.health>0)
 	selected=selected.filter(func(u): return is_instance_valid(u) and u.health>0)
-	enemy_ai_timer += delta
-	if enemy_ai_timer >= 8.0:
-		enemy_ai_timer = 0.0
-		enemy_ai_step()
-	enemy_attack_timer += delta
-	if enemy_attack_timer >= enemy_attack_cooldown:
-		enemy_attack_timer = 0.0
-		enemy_attack_level = min(enemy_attack_level + 1, 5)
-		enemy_attack_cooldown = max(20.0, 42.0 - enemy_attack_level * 4.0)
-		if not enemy_attack_active:
-			begin_enemy_attack()
+	if enemy_enabled:
+		enemy_ai_timer += delta
+		if enemy_ai_timer >= 8.0:
+			enemy_ai_timer = 0.0
+			enemy_ai_step()
+		enemy_attack_timer += delta
+		if enemy_attack_timer >= enemy_attack_cooldown:
+			enemy_attack_timer = 0.0
+			enemy_attack_level = min(enemy_attack_level + 1, 5)
+			enemy_attack_cooldown = max(20.0, 42.0 - enemy_attack_level * 4.0)
+			if not enemy_attack_active:
+				begin_enemy_attack()
 	income_timer+=delta
 	if income_timer>=5.0:
 		income_timer=0.0
@@ -600,6 +637,7 @@ func create_enemy_building(building_name:String, pos:Vector2) -> void:
 	enemy_buildings.append(structure)
 
 func enemy_ai_step() -> void:
+	if not enemy_enabled:return
 	# Basic resource gathering, expansion, and periodic recruitment.
 	enemy_resources.food+=18
 	enemy_resources.gold+=8
@@ -634,6 +672,7 @@ func enemy_has_barracks() -> bool:
 	return false
 
 func begin_enemy_attack() -> void:
+	if not enemy_enabled:return
 	var squad:Array[Node2D]=[]
 	for u in units:
 		if is_instance_valid(u) and u.team==1 and u.health>0:
@@ -662,6 +701,7 @@ func begin_enemy_attack() -> void:
 			if is_instance_valid(soldier) and soldier.health>0: soldier.move_to(fallback+Vector2((i%3)*24,(i/3)*24))
 
 func monitor_enemy_attack() -> void:
+	if not enemy_enabled:return
 	var living:=0
 	for soldier in enemy_attack_group:
 		if is_instance_valid(soldier) and soldier.health>0: living+=1
