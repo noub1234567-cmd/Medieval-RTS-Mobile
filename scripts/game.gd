@@ -565,12 +565,29 @@ func get_placement_position(pos:Vector2)->Vector2:
 	return grid_to_screen(world_to_grid(pos))
 
 func is_building_placement_valid(pos:Vector2)->bool:
+	# Validate the full visual footprint, not just the placement center.
+	var footprint:=PackedVector2Array([
+		Vector2(0,-26),Vector2(24,-10),Vector2(24,12),
+		Vector2(0,28),Vector2(-24,12),Vector2(-24,-10)
+	])
+	for offset in footprint:
+		var edge_cell=world_to_grid(pos+offset)
+		if edge_cell.x<0 or edge_cell.y<0 or edge_cell.x>=GRID.x or edge_cell.y>=GRID.y:
+			return false
 	var cell=world_to_grid(pos)
 	if cell.x<0 or cell.y<0 or cell.x>=GRID.x or cell.y>=GRID.y:return false
+	# Keep existing building spacing rules.
 	for existing in buildings+enemy_buildings:
 		if is_instance_valid(existing) and existing.health>0 and pos.distance_to(existing.position)<54.0:return false
+	# Avoid woodland and all live resource deposits.
 	for tree_pos in tree_positions:
 		if pos.distance_to(tree_pos)<48.0:return false
+	for node in resource_nodes:
+		if is_instance_valid(node) and node.amount>0 and pos.distance_to(node.position)<42.0:return false
+	# Prevent building footprints from overlapping units of either team.
+	for unit in units:
+		if is_instance_valid(unit) and unit.health>0 and pos.distance_to(unit.position)<42.0:return false
+	# Placement also requires the currently selected building's full cost.
 	if not building_cost.has(pending_building):return false
 	for key in building_cost[pending_building]:
 		if resources.get(key,0)<building_cost[pending_building][key]:return false
