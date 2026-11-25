@@ -374,9 +374,18 @@ func create_hud() -> void:
 	top.add_child(title)
 	pause_toggle_button=Button.new()
 	pause_toggle_button.text="Pause"
-	pause_toggle_button.custom_minimum_size=Vector2(72,32)
+	pause_toggle_button.custom_minimum_size=Vector2(92,40)
+	pause_toggle_button.anchor_left=1.0
+	pause_toggle_button.anchor_right=1.0
+	pause_toggle_button.anchor_top=0.0
+	pause_toggle_button.anchor_bottom=0.0
+	pause_toggle_button.offset_left=-104.0
+	pause_toggle_button.offset_right=-8.0
+	pause_toggle_button.offset_top=8.0
+	pause_toggle_button.offset_bottom=48.0
+	pause_toggle_button.z_index=100
 	pause_toggle_button.pressed.connect(toggle_pause)
-	top.add_child(pause_toggle_button)
+	hud.add_child(pause_toggle_button)
 	var collapse:=Button.new()
 	collapse.text="−"
 	collapse.custom_minimum_size=Vector2(36,32)
