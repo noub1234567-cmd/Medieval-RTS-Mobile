@@ -534,6 +534,20 @@ func enemy_count() -> int:
 	return count
 
 func begin_placement(building_name:String) -> void:
+	# Do not create a placement preview when the player cannot afford the building.
+	if not building_cost.has(building_name):
+		help_label.text="Unknown building type"
+		return
+	for key in building_cost[building_name]:
+		if resources.get(key,0)<building_cost[building_name][key]:
+			placing_building=false
+			pending_building=""
+			if is_instance_valid(building_ghost):
+				building_ghost.queue_free()
+				building_ghost=null
+			placement_cursor_valid=false
+			help_label.text="Not enough resources to build %s" % building_name
+			return
 	placing_building=true
 	pending_building=building_name
 	if not is_instance_valid(building_ghost):
