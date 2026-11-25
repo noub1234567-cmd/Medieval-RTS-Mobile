@@ -1,3 +1,4 @@
+# Restored baseline: pre-placement-toggle behavior.
 extends Node2D
 
 const GRID := Vector2i(40, 40)
