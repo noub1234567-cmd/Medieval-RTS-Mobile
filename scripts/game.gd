@@ -748,6 +748,7 @@ func place_building(pos:Vector2) -> void:
 	shape.color={"Farm":Color(0.65,0.55,0.25),"House":Color(0.65,0.3,0.22),"Barracks":Color(0.3,0.32,0.4),"Guard Tower":Color(0.35,0.55,0.65),"Wall":Color(0.45,0.42,0.38),"Warehouse":Color(0.55,0.48,0.32),"Lumber Mill":Color(0.35,0.52,0.25),"Quarry":Color(0.48,0.48,0.52),"Gold Mine":Color(0.72,0.62,0.22),"Mill":Color(0.75,0.72,0.48)}[pending_building]
 	structure.add_child(shape)
 	var label:=Label.new()
+	label.name="BuildingNameLabel"
 	label.text=pending_building
 	label.position=Vector2(-32,-42)
 	label.scale=Vector2(0.8,0.8)
@@ -961,13 +962,9 @@ func building_upgrade_completed(b:Node2D)->void:
 func building_completed(b:Node2D)->void:
 	construction_sites.erase(b)
 	if b.team==0:
-		var name_label:Label=null
-		for child in b.get_children():
-			if child is Label and child!=b.construction_label and child!=b.upgrade_label:
-				name_label=child
-				break
+		var name_label:Label=b.get_node_or_null("BuildingNameLabel")
 		if is_instance_valid(name_label):
-				name_label.text=b.building_type + (" Level 2" if b.building_upgrade_level>=2 else "")
+			name_label.text=b.building_type + (" Level 2" if b.building_upgrade_level>=2 else "")
 		if b.building_type=="House" and b.building_upgrade_level>=2:
 			population_cap+=3
 		elif b.building_type=="Warehouse":
