@@ -11,12 +11,47 @@ var attack_cooldown:float=1.5
 var health_bar:Polygon2D
 var construction_progress:float=0.0
 var is_complete:bool=true
+var construction_bar_bg:Polygon2D
+var construction_bar_fill:Polygon2D
+var construction_label:Label
 
 func _ready()->void:
 	health_bar=Polygon2D.new()
 	health_bar.position=Vector2(0,-36)
 	add_child(health_bar)
 	update_health_bar()
+	if not is_complete:
+		create_construction_display()
+		update_construction_display()
+
+func create_construction_display()->void:
+	construction_label=Label.new()
+	construction_label.text="Building 0%"
+	construction_label.position=Vector2(-42,-58)
+	construction_label.add_theme_font_size_override("font_size",12)
+	construction_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	construction_label.size=Vector2(84,18)
+	add_child(construction_label)
+	construction_bar_bg=Polygon2D.new()
+	construction_bar_bg.position=Vector2(0,-46)
+	construction_bar_bg.polygon=PackedVector2Array([Vector2(-22,-2),Vector2(22,-2),Vector2(22,3),Vector2(-22,3)])
+	construction_bar_bg.color=Color(0.12,0.12,0.12,0.95)
+	add_child(construction_bar_bg)
+	construction_bar_fill=Polygon2D.new()
+	construction_bar_fill.position=Vector2(-22,-46)
+	construction_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(0,-2),Vector2(0,3),Vector2(0,3)])
+	construction_bar_fill.color=Color(0.25,0.9,0.35,1)
+	add_child(construction_bar_fill)
+
+func update_construction_display()->void:
+	if not is_instance_valid(construction_bar_fill):return
+	var width=44.0*construction_progress/100.0
+	construction_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(width,-2),Vector2(width,3),Vector2(0,3)])
+	if is_instance_valid(construction_label):
+		construction_label.text="Building %d%%" % int(construction_progress)
+		construction_label.visible=not is_complete
+	construction_bar_bg.visible=not is_complete
+	construction_bar_fill.visible=not is_complete
 
 func update_health_bar()->void:
 	if not is_instance_valid(health_bar): return
@@ -35,6 +70,7 @@ func add_build_work(amount:float)->void:
 	var shape=get_node_or_null("Polygon2D")
 	if shape is Polygon2D:
 		shape.color.a=1.0 if is_complete else 0.55+0.4*(construction_progress/100.0)
+	update_construction_display()
 
 func _process(delta:float)->void:
 	if not is_complete or building_type!="Guard Tower" or team!=0: return
