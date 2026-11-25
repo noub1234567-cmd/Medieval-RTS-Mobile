@@ -94,6 +94,7 @@ func move_to(p:Vector2)->void:
 	harvest_target_node=null
 	storage_target=null
 	build_target_site=null
+	upgrade_target_building=null
 	# Manual movement cancels the work assignment, but must not discard carried resources.
 	resume_harvest_node=null
 	destination=p
@@ -105,6 +106,7 @@ func harvest_target(node:Node2D)->void:
 	target=null
 	storage_target=null
 	build_target_site=null
+	upgrade_target_building=null
 	harvest_target_node=node
 	resume_harvest_node=node
 	moving=true
@@ -166,6 +168,7 @@ func build_target(site:Node2D)->void:
 	target=null
 	harvest_target_node=null
 	storage_target=null
+	upgrade_target_building=null
 	build_target_site=site
 	resume_harvest_node=null
 	moving=true
