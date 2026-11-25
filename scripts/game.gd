@@ -287,17 +287,17 @@ func touch_tap(pos:Vector2)->void:
 	if placing_building:
 		place_building(pos)
 		return
-	var unit=find_player_unit_at(pos)
-	if unit!=null:
-		clear_selection()
-		add_selection(unit)
-		return
 	var site=find_unfinished_building_at(pos)
 	if site!=null:
 		clear_selection()
 		selected_building=site
 		if is_instance_valid(cancel_build_button):cancel_build_button.visible=true
 		help_label.text="Construction selected — cancel to recover 60% of cost"
+		return
+	var unit=find_player_unit_at(pos)
+	if unit!=null:
+		clear_selection()
+		add_selection(unit)
 		return
 	var tower=find_player_building_at(pos)
 	if tower!=null:
@@ -462,10 +462,12 @@ func create_hud() -> void:
 	enemy_row.add_child(enemy_toggle_button)
 	cancel_build_button=Button.new()
 	cancel_build_button.text="Cancel Build (60%)"
-	cancel_build_button.custom_minimum_size=Vector2(130,32)
+	cancel_build_button.custom_minimum_size=Vector2(180,44)
+	cancel_build_button.position=Vector2(8,58)
 	cancel_build_button.visible=false
+	cancel_build_button.z_index=100
 	cancel_build_button.pressed.connect(cancel_selected_construction)
-	enemy_row.add_child(cancel_build_button)
+	hud.add_child(cancel_build_button)
 	var zoom_row:=HBoxContainer.new()
 	v.add_child(zoom_row)
 	var zoom_in:=Button.new()
