@@ -133,6 +133,9 @@ func begin_upgrade()->void:
 
 func add_upgrade_work(amount:float)->void:
 	if not is_upgrading:return
+	if building_type!="Town Center":
+		add_building_upgrade_work(amount)
+		return
 	upgrade_progress=min(100.0,upgrade_progress+amount)
 	var width=48.0*upgrade_progress/100.0
 	upgrade_bar_fill.polygon=PackedVector2Array([Vector2(0,-2),Vector2(width,-2),Vector2(width,3),Vector2(0,3)])
