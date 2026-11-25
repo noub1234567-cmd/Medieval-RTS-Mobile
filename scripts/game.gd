@@ -511,6 +511,14 @@ func enemy_count() -> int:
 	return count
 
 func begin_placement(building_name:String) -> void:
+	# Pressing the active building button again cancels placement.
+	if placing_building and pending_building==building_name:
+		placing_building=false
+		if is_instance_valid(building_ghost):
+			building_ghost.queue_free()
+			building_ghost=null
+		help_label.text="Placement cancelled"
+			return
 	placing_building=true
 	pending_building=building_name
 	if not is_instance_valid(building_ghost):
