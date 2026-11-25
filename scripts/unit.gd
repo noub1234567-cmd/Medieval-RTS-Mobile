@@ -154,6 +154,12 @@ func return_to_storage()->void:
 	else:
 		moving=false
 
+func get_building_approach_point(site:Node2D)->Vector2:
+	if site==null or not is_instance_valid(site):return position
+	var away=(position-site.position).normalized()
+	if away.length()<0.1:away=Vector2(1,0)
+	return site.position+away*52.0
+
 func build_target(site:Node2D)->void:
 	if team!=0 or site==null or not is_instance_valid(site) or site.is_complete:return
 	target=null
@@ -162,7 +168,7 @@ func build_target(site:Node2D)->void:
 	build_target_site=site
 	resume_harvest_node=null
 	moving=true
-	destination=site.position
+	destination=get_building_approach_point(site)
 	set_route(destination)
 
 func attack_target(enemy:Node2D)->void:
@@ -275,12 +281,14 @@ func _process(delta:float)->void:
 		if not is_instance_valid(build_target_site) or build_target_site.is_complete:
 			build_target_site=null
 			moving=false
-		elif position.distance_to(build_target_site.position)<=42.0:
+		elif position.distance_to(build_target_site.position)<=58.0:
 			moving=false
+			path_pending=false
+			route=PackedVector2Array()
 			build_target_site.add_build_work(delta*10.0)
 		else:
 			moving=true
-			destination=build_target_site.position
+			destination=get_building_approach_point(build_target_site)
 			if route.is_empty() or route[route.size()-1].distance_to(destination)>8.0:set_route(destination)
 	attack_timer=max(0.0,attack_timer-delta)
 	acquire_timer-=delta
