@@ -277,7 +277,7 @@ func _process(delta:float)->void:
 			moving=false
 		elif position.distance_to(build_target_site.position)<=42.0:
 			moving=false
-			build_target_site.add_build_work(delta*12.0)
+			build_target_site.add_build_work(delta*10.0)
 		else:
 			moving=true
 			destination=build_target_site.position
