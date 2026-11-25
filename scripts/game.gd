@@ -288,13 +288,18 @@ func touch_tap(pos:Vector2)->void:
 	if placing_building:
 		place_building(pos)
 		return
+	# When workers are selected, resolve construction-site hits first and
+	# issue the build order before any building-selection or movement logic.
 	var site=find_unfinished_building_at(pos)
 	if site!=null and not selected.is_empty():
+		var assigned:=false
 		for worker in selected:
-			if worker.team==0:
+			if is_instance_valid(worker) and worker.team==0:
 				worker.build_target(site)
-		help_label.text="Builders reassigned to construction!"
-		return
+				assigned=true
+		if assigned:
+			help_label.text="Builders reassigned to construction!"
+			return
 	if site!=null:
 		clear_selection()
 		selected_building=site
@@ -706,7 +711,9 @@ func place_building(pos:Vector2) -> void:
 
 func find_unfinished_building_at(pos:Vector2)->Node2D:
 	var nearest:Node2D=null
-	var best_distance:=58.0
+	# Larger hit radius for unfinished sites, whose labels and progress bars
+	# can make their visible footprint larger than their center.
+	var best_distance:=110.0
 	for site in construction_sites:
 		if is_instance_valid(site) and site.team==0 and not site.is_complete:
 			var distance=site.position.distance_to(pos)
